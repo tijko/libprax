@@ -62,6 +62,7 @@ char *pid_name(profile_t *process);
 // and loads a fdstat_t struct with stats for each file-descriptor found.
 int process_fd_stats(profile_t **process);
 
+//XXX These definitions are from linux/ioprio.h
 #define IOPRIO_WHO_PROCESS 1
 #define IOPRIO_SHIFT 13
 #define IOPRIO_PRIO_MASK ((1UL << IOPRIO_SHIFT) - 1)
