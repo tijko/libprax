@@ -27,24 +27,12 @@ int is_alive(profile_t *process)
     return -1;
 }
 
-int pid_digit_places(int pid)
-{
-    int n = pid;
-    int places = 0;
-    while (n) { 
-        n /= 10;
-        places++;
-    }
-    return places;
-}
-
 char *construct_path(int pid, char *dir)
 {
-    int places = pid_digit_places(pid);
-    char *pid_str = calloc(places + 1, sizeof(char));
+    char *pid_str = calloc(MAXPID, sizeof(char));
     sprintf(pid_str, "%d", pid);
     size_t dir_len = strlen(dir);
-    char *path = calloc(PROCLEN + dir_len + places, sizeof(char));
+    char *path = calloc(PROCLEN + dir_len + MAXPID, sizeof(char));
     strcat(path, PROC);
     strcat(path, pid_str);
     strcat(path, dir);
@@ -125,8 +113,10 @@ int set_pid_nice(profile_t *process, int priority)
 
 int get_ioprio(profile_t *process)
 {
-    int io = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
-    return io;
+    int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
+    int ioprio_class = IOPRIO_CLASS(ioprio);
+    ioprio &= 0xff; 
+    return ioprio;
 }
 
 int set_ioprio(profile_t *process, int ioprio)
