@@ -9,6 +9,7 @@
 #define _GNU_SOURCE
 
 #define MAXPID 16
+#define IOPRIO_SIZE 3
 
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
@@ -69,6 +70,6 @@ int process_fd_stats(profile_t **process);
 #define IOPRIO_VALUE(class, data) (((class) << IOPRIO_SHIFT) | data)
 
 // Returns the I/O scheduling class and priority of profiled pid.
-int get_ioprio(profile_t *process);
+char *get_ioprio(profile_t *process);
 // Sets the I/O scheduling class and priority of profiled pid.
 int set_ioprio(profile_t *process, int ioprio);
