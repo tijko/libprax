@@ -111,12 +111,25 @@ int set_pid_nice(profile_t *process, int priority)
     return ret;
 }
 
-int get_ioprio(profile_t *process)
+
+char *get_ioprio(profile_t *process)
 {
     int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
-    int ioprio_class = IOPRIO_CLASS(ioprio);
-    ioprio &= 0xff; 
-    return ioprio;
+    if (ioprio == -1) {
+        return NULL;
+    }
+    char *ioprio_class[4] = {"none/", "rt/", "be/", "idle/"};
+    int nice = get_pid_nice(process);
+    int ioprio_class_num = IOPRIO_CLASS(ioprio);
+    char *class_name = ioprio_class[ioprio_class_num];
+    char *ioprio_str = calloc(IOPRIO_SIZE, sizeof(char));
+    int ioprio_nice = (nice + 20) / 5;
+    sprintf(ioprio_str, "%d", ioprio_nice);
+    size_t classlen = strlen(class_name);
+    char *priority = calloc(classlen + IOPRIO_SIZE, sizeof(char));
+    strcat(priority, class_name);
+    strcat(priority, ioprio_str); 
+    return priority;
 }
 
 int set_ioprio(profile_t *process, int ioprio)
