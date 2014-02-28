@@ -1,19 +1,15 @@
 #ifdef __x86_64__
-    #define SETIOPRIO 251
-    #define GETIOPRIO 252
-#endif
-
-#ifdef __i386__
-    #define SETIOPRIO 289
-    #define GETIOPRIO 290
+#define SETIOPRIO 251
+#define GETIOPRIO 252
+#elif __i386__
+#define SETIOPRIO 289
+#define GETIOPRIO 290
 #endif
 
 #define _GNU_SOURCE
 
-
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
-
 
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
@@ -51,7 +47,6 @@ int set_pid_nice(profile_t *process, int priority);
 char *construct_path(int pid, char *dir);
 
 #define COMM "/comm"
-
 
 #define FD "/fd/"
 
