@@ -8,6 +8,8 @@
 
 #define _GNU_SOURCE
 
+#define MAXPID 16
+
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
 
