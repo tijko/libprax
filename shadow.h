@@ -63,6 +63,14 @@ int process_fd_stats(profile_t **process);
 //XXX These definitions are from linux/ioprio.h
 #define IOPRIO_WHO_PROCESS 1
 #define IOPRIO_SHIFT 13
+
+enum {
+    IOPRIO_CLASS_NONE,
+    IOPRIO_CLASS_RT,
+    IOPRIO_CLASS_BE,
+    IOPRIO_CLASS_IDLE,
+};
+
 #define IOPRIO_PRIO_MASK ((1UL << IOPRIO_SHIFT) - 1)
 
 #define IOPRIO_CLASS(mask) ((mask) >> IOPRIO_SHIFT)
@@ -72,4 +80,4 @@ int process_fd_stats(profile_t **process);
 // Returns the I/O scheduling class and priority of profiled pid.
 char *get_ioprio(profile_t *process);
 // Sets the I/O scheduling class and priority of profiled pid.
-int set_ioprio(profile_t *process, int ioprio);
+int set_ioprio(profile_t *process, int class, int value);
