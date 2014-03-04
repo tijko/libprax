@@ -132,8 +132,13 @@ char *get_ioprio(profile_t *process)
     return priority;
 }
 
-int set_ioprio(profile_t *process, int ioprio)
+int set_ioprio(profile_t *process, int class, int value)
 {
-    // un-implemented
+    int ioprio = IOPRIO_VALUE(class, value);
+    int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
+                            process->pid, ioprio);
+    if (setioprio < 0) {
+        return -1;
+    }
     return 0;
 }
