@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -5,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/resource.h>
@@ -141,4 +145,21 @@ int set_ioprio(profile_t *process, int class, int value)
         return -1;
     }
     return 0;
+}
+
+int proc_limit(profile_t *process, int resource, int new, int old)
+{
+    int ret;
+    if (new > 0) {
+        struct rlimit *new_limit = malloc(sizeof *new_limit);        
+        struct rlimit old_limit;
+        ret = prlimit(process->pid, resource, new_limit, &old_limit);
+        return ret;
+    } else if (old > 0) {
+        struct rlimit *old_limit = malloc(sizeof *old_limit);
+        struct rlimit new_limit;
+        ret = prlimit(process->pid, resource, &new_limit, old_limit);
+        return old_limit->rlim_cur;
+    }
+    return -1;
 }
