@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
+
 #ifdef __x86_64__
 #define SETIOPRIO 251
 #define GETIOPRIO 252
@@ -6,8 +9,6 @@
 #define GETIOPRIO 290
 #endif
 
-#define _GNU_SOURCE
-#define _FILE_OFFSET_BITS 64
 
 #define MAXPID 16
 #define IOPRIO_SIZE 3
