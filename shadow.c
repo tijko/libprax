@@ -1,5 +1,4 @@
-#define _GNU_SOURCE
-#define _FILE_OFFSET_BITS 64
+#include "shadow.h"
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -13,7 +12,6 @@
 #include <sys/syscall.h>
 #include <sys/resource.h>
 
-#include "shadow.h"
 
 
 int is_alive(profile_t *process)
@@ -83,11 +81,9 @@ int process_fd_stats(profile_t **process)
             fullpath = calloc(file_len + fdpath_len, sizeof(char));
             strcat(fullpath, fdpath);
             strcat(fullpath, files->d_name);
+            (*curr)->file = NULL;
             open_fd = open(fullpath, O_RDONLY);
-            if (open_fd == -1) {
-                continue;
-            }
-            else {
+            if (open_fd > 0) {
                 buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
                 readlink(fullpath, buf, LINKBUFSIZ);
                 (*curr)->file = buf;
@@ -154,12 +150,13 @@ int proc_limit(profile_t *process, int resource, int new, int old)
         struct rlimit *new_limit = malloc(sizeof *new_limit);        
         struct rlimit old_limit;
         ret = prlimit(process->pid, resource, new_limit, &old_limit);
+        free(new_limit);
         return ret;
     } else if (old > 0) {
         struct rlimit *old_limit = malloc(sizeof *old_limit);
         struct rlimit new_limit;
         ret = prlimit(process->pid, resource, &new_limit, old_limit);
-        return old_limit->rlim_cur;
+        return (int) old_limit->rlim_cur;
     }
     return -1;
 }
