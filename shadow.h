@@ -7,6 +7,7 @@
 #endif
 
 #define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
 
 #define MAXPID 16
 #define IOPRIO_SIZE 3
@@ -81,3 +82,6 @@ enum {
 char *get_ioprio(profile_t *process);
 // Sets the I/O scheduling class and priority of profiled pid.
 int set_ioprio(profile_t *process, int class, int value);
+
+// sets/gets process resource limits.
+int proc_limit(profile_t *process, int resource, int new, int old);
