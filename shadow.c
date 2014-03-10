@@ -143,20 +143,48 @@ int set_ioprio(profile_t *process, int class, int value)
     return 0;
 }
 
-int proc_limit(profile_t *process, int resource, int new, int old)
+unsigned int max_proc_res(profile_t *process, int resource, int new, int old)
 {
     int ret;
-    if (new > 0) {
-        struct rlimit *new_limit = malloc(sizeof *new_limit);        
-        struct rlimit old_limit;
-        ret = prlimit(process->pid, resource, new_limit, &old_limit);
-        free(new_limit);
-        return ret;
-    } else if (old > 0) {
-        struct rlimit *old_limit = malloc(sizeof *old_limit);
-        struct rlimit new_limit;
-        ret = prlimit(process->pid, resource, &new_limit, old_limit);
-        return (int) old_limit->rlim_cur;
+    if (new == 0) {
+        struct rlimit *old_limit = malloc(sizeof *old_limit);        
+        struct rlimit *new_limit = NULL;
+        ret = prlimit(process->pid, resource, new_limit, old_limit);
+        if (ret < 0) {
+            return (unsigned int) errno;
+        }
+        return (unsigned int) old_limit->rlim_max;
+    } else {
+        struct rlimit *new_limit = malloc(sizeof *new_limit);
+        struct rlimit *old_limit = NULL;
+        new_limit->rlim_max = new;
+        ret = prlimit(process->pid, resource, new_limit, old_limit);
+        if (ret < 0) {
+            return (unsigned int) errno;
+        }
+        return (unsigned int) ret;
     }
-    return -1;
+}
+
+unsigned int cur_proc_res(profile_t *process, int resource, int new, int old)
+{
+    int ret;
+    if (new == 0) {
+        struct rlimit *old_limit = malloc(sizeof *old_limit);        
+        struct rlimit *new_limit = NULL;
+        ret = prlimit(process->pid, resource, new_limit, old_limit);
+        if (ret < 0) {
+            return (unsigned int) errno;
+        }
+        return (unsigned int) old_limit->rlim_cur;
+    } else {
+        struct rlimit *new_limit = malloc(sizeof *new_limit);
+        struct rlimit *old_limit = NULL;
+        new_limit->rlim_cur = new;
+        ret = prlimit(process->pid, resource, new_limit, old_limit);
+        if (ret < 0) {
+            return (unsigned int) errno;
+        }
+        return (unsigned int) ret;
+    }
 }
