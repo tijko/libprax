@@ -85,4 +85,6 @@ char *get_ioprio(profile_t *process);
 int set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
-int proc_limit(profile_t *process, int resource, int new, int old);
+unsigned int max_proc_res(profile_t *process, int resource, int new, int old);
+
+unsigned int cur_proc_res(profile_t *process, int resource, int new, int old);
