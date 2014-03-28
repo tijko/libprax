@@ -4,11 +4,10 @@ LDFLAGS = -shared
 
 TARGET = shadow.so
 SRCS = $(wildcard *.c) 
-OBJS = shadow.o
+OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 $(TARGET): $(OBJS) 
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
 $(OBJS): $(SRCS)
 	$(CC) $(CFLAGS) $(SRCS)
-
