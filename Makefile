@@ -11,3 +11,6 @@ $(TARGET): $(OBJS)
 
 $(OBJS): $(SRCS)
 	$(CC) $(CFLAGS) $(SRCS)
+
+clean:
+	rm *.o
