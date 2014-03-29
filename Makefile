@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -c -g -fPIC -Wall
 LDFLAGS = -shared
 
-TARGET = shadow.so
+TARGET = libshadow.so
 SRCS = $(wildcard *.c) 
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
