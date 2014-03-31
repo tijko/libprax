@@ -12,5 +12,12 @@ $(TARGET): $(OBJS)
 $(OBJS): $(SRCS)
 	$(CC) $(CFLAGS) $(SRCS)
 
+install:
+	mv $(TARGET) /usr/lib/
+	ldconfig -n /usr/lib/$(TARGET)
+
+uninstall:
+	rm /usr/lib/$(TARGET)
+
 clean:
 	rm *.o
