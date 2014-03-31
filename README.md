@@ -12,6 +12,7 @@ A small library to provide auxillary data on running processes.
 Run: 
 
     [user@user ~]$ make
+    [user@user ~]$ sudo make install
 
 then:
 
