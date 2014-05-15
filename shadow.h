@@ -16,6 +16,7 @@
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
 
+
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
 
@@ -30,6 +31,8 @@ typedef struct profile profile_t;
 
 struct profile {
     int pid;
+    unsigned max_res;
+    unsigned cur_res;
     fdstats_t *root;
 };
 
@@ -85,6 +88,6 @@ char *get_ioprio(profile_t *process);
 int set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
-unsigned int max_proc_res(profile_t *process, int resource, int new, int old);
+void max_proc_res(profile_t *process, int resource, int *value);
 
-unsigned int cur_proc_res(profile_t *process, int resource, int new, int old);
+void cur_proc_res(profile_t *process, int resource, int *value);
