@@ -143,48 +143,52 @@ int set_ioprio(profile_t *process, int class, int value)
     return 0;
 }
 
-unsigned int max_proc_res(profile_t *process, int resource, int new, int old)
+void max_proc_res(profile_t *process, int resource, int *value)
 {
     int ret;
-    if (new == 0) {
+    if (value == NULL) {
         struct rlimit *old_limit = malloc(sizeof *old_limit);        
         struct rlimit *new_limit = NULL;
         ret = prlimit(process->pid, resource, new_limit, old_limit);
         if (ret < 0) {
-            return (unsigned int) errno;
+            process->max_res = (unsigned) errno;
+        } else {
+            process->max_res = (unsigned) old_limit->rlim_max;
         }
-        return (unsigned int) old_limit->rlim_max;
     } else {
         struct rlimit *new_limit = malloc(sizeof *new_limit);
         struct rlimit *old_limit = NULL;
-        new_limit->rlim_max = new;
+        new_limit->rlim_max = *value;
         ret = prlimit(process->pid, resource, new_limit, old_limit);
         if (ret < 0) {
-            return (unsigned int) errno;
+            process->max_res = (unsigned) errno;
+        } else {
+            process->max_res = (unsigned) *value;
         }
-        return (unsigned int) ret;
     }
 }
 
-unsigned int cur_proc_res(profile_t *process, int resource, int new, int old)
+void cur_proc_res(profile_t *process, int resource, int *value)
 {
     int ret;
-    if (new == 0) {
+    if (value == NULL) {
         struct rlimit *old_limit = malloc(sizeof *old_limit);        
         struct rlimit *new_limit = NULL;
         ret = prlimit(process->pid, resource, new_limit, old_limit);
         if (ret < 0) {
-            return (unsigned int) errno;
+            process->cur_res = (unsigned) errno;
+        } else {
+            process->cur_res = (unsigned) old_limit->rlim_cur;
         }
-        return (unsigned int) old_limit->rlim_cur;
     } else {
         struct rlimit *new_limit = malloc(sizeof *new_limit);
         struct rlimit *old_limit = NULL;
-        new_limit->rlim_cur = new;
+        new_limit->rlim_cur = *value;
         ret = prlimit(process->pid, resource, new_limit, old_limit);
         if (ret < 0) {
-            return (unsigned int) errno;
+            process->cur_res = (unsigned) errno;
+        } else {
+            process->cur_res = (unsigned) *value;
         }
-        return (unsigned int) ret;
     }
 }
