@@ -63,9 +63,8 @@ int process_fd_stats(profile_t **process)
     char *fdpath = construct_path((*process)->pid, FD);
 
     DIR *fd_dir = opendir(fdpath);
-    if (!fd_dir) {
+    if (!fd_dir) 
         return -1;
-    }
     struct dirent *files = malloc(sizeof *files);
 
     size_t fdpath_len = strlen(fdpath);
@@ -82,7 +81,7 @@ int process_fd_stats(profile_t **process)
             strcat(fullpath, files->d_name);
             (*curr)->file = NULL;
             open_fd = open(fullpath, O_RDONLY);
-            if (open_fd > 0) {
+            if (open_fd != -1) {
                 buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
                 readlink(fullpath, buf, LINKBUFSIZ);
                 (*curr)->file = buf;
@@ -135,7 +134,7 @@ int set_ioprio(profile_t *process, int class, int value)
     int ioprio = IOPRIO_VALUE(class, value);
     int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
                             process->pid, ioprio);
-    if (setioprio < 0) 
+    if (setioprio == -1) 
         return -1;
     return 0;
 }
