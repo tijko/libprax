@@ -1,5 +1,4 @@
 #include "shadow.h"
-
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -44,16 +43,18 @@ char *construct_path(int pid, char *dir)
 char *pid_name(profile_t *process)
 {
     int alive = is_alive(process);
-    if (alive == -1) 
+    if (alive == -1) { 
         return NULL;
-    char *path = construct_path(process->pid, COMM);
-    FILE *proc = fopen(path, "r");
-    char *name = NULL;
-    size_t n = 0;
-    getline(&name, &n, proc);
-    fclose(proc);
-    name[strlen(name) - 1] = '\0';
-    return name;
+    } else {
+        char *path = construct_path(process->pid, COMM);
+        FILE *proc = fopen(path, "r");
+        char *name = NULL;
+        size_t n = 0;
+        getline(&name, &n, proc);
+        fclose(proc);
+        name[strlen(name) - 1] = '\0';
+        return name;
+    }
 }
 
 int process_fd_stats(profile_t **process)
@@ -85,8 +86,7 @@ int process_fd_stats(profile_t **process)
                 buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
                 readlink(fullpath, buf, LINKBUFSIZ);
                 (*curr)->file = buf;
-                (*curr)->file_stats = malloc(sizeof(struct stat));
-                fstat(open_fd, (*curr)->file_stats);
+                fstat(open_fd, &(*curr)->file_stats);
                 curr = &(*curr)->next_fd;
                 *curr = malloc(sizeof **curr);
             }
