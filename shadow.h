@@ -16,13 +16,14 @@
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
 
+#include <sys/stat.h>
 
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
 
 struct fdstats {
     char *file;
-    struct stat *file_stats;
+    struct stat file_stats;
     fdstats_t *next_fd;
 };
 
@@ -31,6 +32,7 @@ typedef struct profile profile_t;
 
 struct profile {
     int pid;
+    char *name;
     unsigned max_res;
     unsigned cur_res;
     fdstats_t *root;
