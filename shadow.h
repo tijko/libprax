@@ -31,7 +31,7 @@ struct fdstats {
 typedef struct profile profile_t;
 
 struct profile {
-    int pid;
+    char *pid;
     char *name;
     unsigned max_res;
     unsigned cur_res;
@@ -54,7 +54,7 @@ int set_pid_nice(profile_t *process, int priority);
 #define PROCLEN 6
 
 // Constructs the path from the pid and specific dir being looked up.
-char *construct_path(int pid, char *dir);
+char *construct_path(char *pid, char *dir);
 
 #define COMM "/comm"
 
