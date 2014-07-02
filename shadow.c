@@ -19,7 +19,7 @@ int is_alive(profile_t *process)
     struct dirent *cur_proc = malloc(sizeof *cur_proc);
     while ((cur_proc = readdir(proc_dir))) {
         if (cur_proc->d_type ==  DT_DIR && 
-            atoi(cur_proc->d_name) == process->pid) {
+            !(strcmp(cur_proc->d_name, process->pid))) {
             closedir(proc_dir);
             return 0;
         }
@@ -28,14 +28,22 @@ int is_alive(profile_t *process)
     return -1;
 }
 
-char *construct_path(int pid, char *dir)
+char *construct_path(char *pid, char *dir)
 {
-    char *pid_str = calloc(MAXPID, sizeof(char));
-    sprintf(pid_str, "%d", pid);
+    // create this function using snprintf for all string creations/path
+    // using va_args (stdarg) as the parameters may not be called with
+    // the same amount of variables
+    // error checking...
+
+//    char *pid_str = calloc(MAXPID, sizeof(char));
+
+//    sprintf(pid_str, "%d", pid); // send pid as string where needed
+
     size_t dir_len = strlen(dir);
     char *path = calloc(PROCLEN + dir_len + MAXPID, sizeof(char));
     strcat(path, PROC);
-    strcat(path, pid_str);
+    strcat(path, pid);
+//    strcat(path, pid_str);
     strcat(path, dir);
     return path;      
 }
@@ -43,18 +51,16 @@ char *construct_path(int pid, char *dir)
 char *pid_name(profile_t *process)
 {
     int alive = is_alive(process);
-    if (alive == -1) { 
+    if (alive == -1)  
         return NULL;
-    } else {
-        char *path = construct_path(process->pid, COMM);
-        FILE *proc = fopen(path, "r");
-        char *name = NULL;
-        size_t n = 0;
-        getline(&name, &n, proc);
-        fclose(proc);
-        name[strlen(name) - 1] = '\0';
-        return name;
-    }
+    char *path = construct_path(process->pid, COMM);
+    FILE *proc = fopen(path, "r");
+    char *name = NULL;
+    size_t n = 0;
+    getline(&name, &n, proc);
+    fclose(proc);
+    name[strlen(name) - 1] = '\0';
+    return name;
 }
 
 int process_fd_stats(profile_t **process)
@@ -76,10 +82,13 @@ int process_fd_stats(profile_t **process)
     fdstats_t **curr = &(*process)->root;
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
+            // create a helper function here...
+
             file_len = strlen(files->d_name) + 1;
             fullpath = calloc(file_len + fdpath_len, sizeof(char));
             strcat(fullpath, fdpath);
             strcat(fullpath, files->d_name);
+
             (*curr)->file = NULL;
             open_fd = open(fullpath, O_RDONLY);
             if (open_fd != -1) {
@@ -119,13 +128,17 @@ char *get_ioprio(profile_t *process)
     int nice = get_pid_nice(process);
     int ioprio_class_num = IOPRIO_CLASS(ioprio);
     char *class_name = ioprio_class[ioprio_class_num];
-    char *ioprio_str = calloc(IOPRIO_SIZE, sizeof(char));
     int ioprio_nice = (nice + 20) / 5;
+
+    char *ioprio_str = calloc(IOPRIO_SIZE, sizeof(char));
+
     sprintf(ioprio_str, "%d", ioprio_nice);
+
     size_t classlen = strlen(class_name);
     char *priority = calloc(classlen + IOPRIO_SIZE, sizeof(char));
     strcat(priority, class_name);
     strcat(priority, ioprio_str); 
+
     return priority;
 }
 
