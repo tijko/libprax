@@ -31,7 +31,8 @@ struct fdstats {
 typedef struct profile profile_t;
 
 struct profile {
-    char *pid;
+    int pid;
+    char *pidstr;
     char *name;
     unsigned max_res;
     unsigned cur_res;
