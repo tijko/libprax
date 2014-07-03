@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <limits.h>
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
@@ -28,24 +30,24 @@ int is_alive(profile_t *process)
     return -1;
 }
 
-char *construct_path(char *pid, char *dir)
+char *construct_path(int pathparts, ...)
 {
-    // create this function using snprintf for all string creations/path
-    // using va_args (stdarg) as the parameters may not be called with
-    // the same amount of variables
-    // error checking...
-
-//    char *pid_str = calloc(MAXPID, sizeof(char));
-
-//    sprintf(pid_str, "%d", pid); // send pid as string where needed
-
-    size_t dir_len = strlen(dir);
-    char *path = calloc(PROCLEN + dir_len + MAXPID, sizeof(char));
-    strcat(path, PROC);
-    strcat(path, pid);
-//    strcat(path, pid_str);
-    strcat(path, dir);
-    return path;      
+    va_list path;
+    va_start(path, pathparts);
+    int args;
+    size_t pathlen;
+    char *part;
+    char *partial_path;
+    char *pathname = calloc(sizeof(char) * PATH_MAX, sizeof(char));
+    for (args=0; args < pathparts; args++) {
+        part = va_arg(path, char *);
+        pathlen = strlen(part) + strlen(pathname) + 1;
+        partial_path = pathname;
+        pathname = calloc(sizeof(char) * PATH_MAX, sizeof(char));
+        snprintf(pathname, pathlen, "%s%s", partial_path, part);
+    }
+    va_end(path);
+    return pathname;
 }
 
 char *pid_name(profile_t *process)
@@ -53,7 +55,7 @@ char *pid_name(profile_t *process)
     int alive = is_alive(process);
     if (alive == -1)  
         return NULL;
-    char *path = construct_path(process->pid, COMM);
+    char *path = construct_path(3, PROC, process->pid, COMM);
     FILE *proc = fopen(path, "r");
     char *name = NULL;
     size_t n = 0;
@@ -67,28 +69,19 @@ int process_fd_stats(profile_t **process)
 {
     char *fullpath;
     char *buf;
-    char *fdpath = construct_path((*process)->pid, FD);
+    char *fdpath = construct_path(3, PROC, (*process)->pid, FD);
 
     DIR *fd_dir = opendir(fdpath);
     if (!fd_dir) 
         return -1;
     struct dirent *files = malloc(sizeof *files);
-
-    size_t fdpath_len = strlen(fdpath);
-    size_t file_len;
     int open_fd;
 
     (*process)->root = malloc(sizeof((*process)->root));
     fdstats_t **curr = &(*process)->root;
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
-            // create a helper function here...
-
-            file_len = strlen(files->d_name) + 1;
-            fullpath = calloc(file_len + fdpath_len, sizeof(char));
-            strcat(fullpath, fdpath);
-            strcat(fullpath, files->d_name);
-
+            fullpath = construct_path(2, fdpath, files->d_name);
             (*curr)->file = NULL;
             open_fd = open(fullpath, O_RDONLY);
             if (open_fd != -1) {
