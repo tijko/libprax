@@ -21,7 +21,7 @@ int is_alive(profile_t *process)
     struct dirent *cur_proc = malloc(sizeof *cur_proc);
     while ((cur_proc = readdir(proc_dir))) {
         if (cur_proc->d_type ==  DT_DIR && 
-            !(strcmp(cur_proc->d_name, process->pid))) {
+            !(strcmp(cur_proc->d_name, process->pidstr))) {
             closedir(proc_dir);
             return 0;
         }
@@ -55,7 +55,7 @@ char *pid_name(profile_t *process)
     int alive = is_alive(process);
     if (alive == -1)  
         return NULL;
-    char *path = construct_path(3, PROC, process->pid, COMM);
+    char *path = construct_path(3, PROC, process->pidstr, COMM);
     FILE *proc = fopen(path, "r");
     char *name = NULL;
     size_t n = 0;
@@ -69,7 +69,7 @@ int process_fd_stats(profile_t **process)
 {
     char *fullpath;
     char *buf;
-    char *fdpath = construct_path(3, PROC, (*process)->pid, FD);
+    char *fdpath = construct_path(3, PROC, (*process)->pidstr, FD);
 
     DIR *fd_dir = opendir(fdpath);
     if (!fd_dir) 
@@ -123,14 +123,9 @@ char *get_ioprio(profile_t *process)
     char *class_name = ioprio_class[ioprio_class_num];
     int ioprio_nice = (nice + 20) / 5;
 
-    char *ioprio_str = calloc(IOPRIO_SIZE, sizeof(char));
-
-    sprintf(ioprio_str, "%d", ioprio_nice);
-
-    size_t classlen = strlen(class_name);
-    char *priority = calloc(classlen + IOPRIO_SIZE, sizeof(char));
-    strcat(priority, class_name);
-    strcat(priority, ioprio_str); 
+    size_t priolen = strlen(class_name) + IOPRIO_SIZE + 1;
+    char *priority = calloc(priolen, sizeof(char));
+    snprintf(priority, priolen, "%s%d", class_name, ioprio_nice);
 
     return priority;
 }
