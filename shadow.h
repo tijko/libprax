@@ -17,6 +17,7 @@
 #define LINKBUFSIZ 1024
 
 #include <sys/stat.h>
+#include <sys/resource.h>
 
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
@@ -36,7 +37,7 @@ struct profile {
     char *name;
     unsigned max_res;
     unsigned cur_res;
-    fdstats_t *root;
+    fdstats_t *fd;
 };
 
 // Check if process exists.
