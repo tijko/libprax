@@ -14,7 +14,6 @@
 #include <sys/resource.h>
 
 
-
 int is_alive(profile_t *process)
 {
     DIR *proc_dir = opendir(PROC);
@@ -77,8 +76,8 @@ int process_fd_stats(profile_t **process)
     struct dirent *files = malloc(sizeof *files);
     int open_fd;
 
-    (*process)->root = malloc(sizeof((*process)->root));
-    fdstats_t **curr = &(*process)->root;
+    (*process)->fd = malloc(sizeof((*process)->fd));
+    fdstats_t **curr = &(*process)->fd;
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
             fullpath = construct_path(2, fdpath, files->d_name);
@@ -111,7 +110,6 @@ int set_pid_nice(profile_t *process, int priority)
     return ret;
 }
 
-
 char *get_ioprio(profile_t *process)
 {
     int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
@@ -122,11 +120,9 @@ char *get_ioprio(profile_t *process)
     int ioprio_class_num = IOPRIO_CLASS(ioprio);
     char *class_name = ioprio_class[ioprio_class_num];
     int ioprio_nice = (nice + 20) / 5;
-
     size_t priolen = strlen(class_name) + IOPRIO_SIZE + 1;
     char *priority = calloc(priolen, sizeof(char));
     snprintf(priority, priolen, "%s%d", class_name, ioprio_nice);
-
     return priority;
 }
 
