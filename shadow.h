@@ -37,7 +37,7 @@ struct profile {
     char *name;
     unsigned max_res;
     unsigned cur_res;
-    int proc_affin;
+    int cpu_affinity;
     fdstats_t *fd;
 };
 
