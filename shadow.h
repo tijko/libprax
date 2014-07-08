@@ -33,11 +33,13 @@ typedef struct profile profile_t;
 
 struct profile {
     int pid;
+    int cpu_affinity;
+    int nice;
     char *pidstr;
     char *name;
+    char *io_nice;
     unsigned max_res;
     unsigned cur_res;
-    int cpu_affinity;
     fdstats_t *fd;
 };
 
@@ -48,10 +50,10 @@ int is_alive(profile_t *process);
 int pid_digit_places(int pid);
 
 // Function returns the niceness of the pid being profiled.
-int get_pid_nice(profile_t *process);
+void get_pid_nice(profile_t *process);
 
 // Sets the niceness of pid.
-int set_pid_nice(profile_t *process, int priority);
+void set_pid_nice(profile_t *process, int priority);
 
 #define PROC "/proc/"
 #define PROCLEN 6
@@ -64,7 +66,7 @@ char *construct_path(int pathparts, ...);
 #define FD "/fd/"
 
 // Function to return the name of a pid.
-char *pid_name(profile_t *process);
+void pid_name(profile_t *process);
 
 // A function that traverses the "fd" directory of the pid from process
 // and loads a fdstat_t struct with stats for each file-descriptor found.
@@ -88,9 +90,9 @@ enum {
 #define IOPRIO_VALUE(class, data) (((class) << IOPRIO_SHIFT) | data)
 
 // Returns the I/O scheduling class and priority of profiled pid.
-char *get_ioprio(profile_t *process);
+void get_ioprio(profile_t *process);
 // Sets the I/O scheduling class and priority of profiled pid.
-int set_ioprio(profile_t *process, int class, int value);
+void set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
 void max_proc_res(profile_t *process, int resource, int *value);
