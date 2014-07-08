@@ -24,7 +24,7 @@ typedef struct fdstats fdstats_t;
 
 struct fdstats {
     char *file;
-    struct stat file_stats;
+    struct stat *file_stats;
     fdstats_t *next_fd;
 };
 
@@ -37,6 +37,7 @@ struct profile {
     char *name;
     unsigned max_res;
     unsigned cur_res;
+    int proc_affin;
     fdstats_t *fd;
 };
 
@@ -67,7 +68,7 @@ char *pid_name(profile_t *process);
 
 // A function that traverses the "fd" directory of the pid from process
 // and loads a fdstat_t struct with stats for each file-descriptor found.
-int process_fd_stats(profile_t **process);
+int process_fd_stats(profile_t *process);
 
 //XXX These definitions are from linux/ioprio.h
 #define IOPRIO_WHO_PROCESS 1
@@ -95,3 +96,6 @@ int set_ioprio(profile_t *process, int class, int value);
 void max_proc_res(profile_t *process, int resource, int *value);
 
 void cur_proc_res(profile_t *process, int resource, int *value);
+
+// sets the current processor affinity in profile_t struct;
+void processor_affinity(profile_t *procs);
