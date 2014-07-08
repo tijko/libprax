@@ -50,19 +50,21 @@ char *construct_path(int pathparts, ...)
     return pathname;
 }
 
-char *pid_name(profile_t *process)
+void pid_name(profile_t *process)
 {
     int alive = is_alive(process);
-    if (alive == -1)  
-        return NULL;
-    char *path = construct_path(3, PROC, process->pidstr, COMM);
-    FILE *proc = fopen(path, "r");
-    char *name = NULL;
-    size_t n = 0;
-    getline(&name, &n, proc);
-    fclose(proc);
-    name[strlen(name) - 1] = '\0';
-    return name;
+    if (alive == -1) {
+        process->name = NULL;
+    } else {
+        char *path = construct_path(3, PROC, process->pidstr, COMM);
+        FILE *proc = fopen(path, "r");
+        char *name = NULL;
+        size_t n = 0;
+        getline(&name, &n, proc);
+        fclose(proc);
+        name[strlen(name) - 1] = '\0';
+        process->name = name;
+    }
 }
 
 int process_fd_stats(profile_t *process)
@@ -100,43 +102,59 @@ int process_fd_stats(profile_t *process)
     return 0;
 }
 
-int get_pid_nice(profile_t *process)
+void get_pid_nice(profile_t *process)
 {
-    int nice_value = getpriority(PRIO_PROCESS, process->pid);
-    return nice_value;
+    int nice_value;
+    nice_value  = getpriority(PRIO_PROCESS, process->pid);
+    process->nice = nice_value;
 }
 
-int set_pid_nice(profile_t *process, int priority)
+void set_pid_nice(profile_t *process, int priority)
 {
     int ret;
     ret = setpriority(PRIO_PROCESS, process->pid, priority);
-    return ret;
+    if (ret == -1) {
+        process->nice = ret;
+    } else {
+        process->nice = priority;
+    }
 }
 
-char *get_ioprio(profile_t *process)
+void get_ioprio(profile_t *process)
 {
-    int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
-    if (ioprio == -1) 
-        return NULL;
+    int ioprio;
+    int ioprio_class_num;
+    char *class_name;
+    int ioprio_nice;
+    size_t priolen;
+    char *priority;
     char *ioprio_class[4] = {"none/", "rt/", "be/", "idle/"};
-    int nice = get_pid_nice(process);
-    int ioprio_class_num = IOPRIO_CLASS(ioprio);
-    char *class_name = ioprio_class[ioprio_class_num];
-    int ioprio_nice = (nice + 20) / 5;
-    size_t priolen = strlen(class_name) + IOPRIO_SIZE + 1;
-    char *priority = calloc(priolen, sizeof(char));
-    snprintf(priority, priolen, "%s%d", class_name, ioprio_nice);
-    return priority;
+    ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
+    if (ioprio == -1) { 
+        process->io_nice = NULL;
+    } else {
+        get_pid_nice(process);
+        ioprio_class_num = IOPRIO_CLASS(ioprio);
+        class_name = ioprio_class[ioprio_class_num];
+        ioprio_nice = (process->nice + 20) / 5;
+        priolen = strlen(class_name) + IOPRIO_SIZE + 1;
+        priority = calloc(priolen, sizeof(char));
+        snprintf(priority, priolen, "%s%d", class_name, ioprio_nice);
+        process->io_nice = priority;
+    }
 }
 
-int set_ioprio(profile_t *process, int class, int value)
+void set_ioprio(profile_t *process, int class, int value)
 {
-    int ioprio = IOPRIO_VALUE(class, value);
-    int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
-                            process->pid, ioprio);
-    if (setioprio == -1) 
-        return -1;
-    return 0;
+    int ioprio, setioprio;
+    ioprio = IOPRIO_VALUE(class, value);
+    setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
+                                  process->pid, ioprio);
+    if (setioprio == -1) {
+        process->io_nice = NULL;
+    } else {
+        get_ioprio(process);
+    }
 }
 
 void max_proc_res(profile_t *process, int resource, int *value)
