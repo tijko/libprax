@@ -198,9 +198,9 @@ void processor_affinity(profile_t *procs)
     procsize = sizeof procset;
     ret = sched_getaffinity(procs->pid, procsize, &procset);
     if (ret == -1) {
-        procs->proc_affin = -1;
+        procs->cpu_affinity = -1;
     } else {
-        procs->proc_affin = CPU_COUNT(&procset);
+        procs->cpu_affinity = CPU_COUNT(&procset);
     }
 }
 
@@ -217,8 +217,8 @@ void set_processor_affinity(profile_t *procs, int cpu_affinity)
     
     ret = sched_setaffinity(procs->pid, procsize, &procset);
     if (ret == -1) {
-        procs->proc_affin = -1;
+        procs->cpu_affinity = -1;
     } else {
-        procs->proc_affin = cpu_affinity;
+        procs->cpu_affinity = cpu_affinity;
     }
 }
