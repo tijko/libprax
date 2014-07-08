@@ -1,5 +1,6 @@
 #include "shadow.h"
 #include <stdio.h>
+#include <sched.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -187,3 +188,18 @@ void cur_proc_res(profile_t *process, int resource, int *value)
         }
     }
 }
+
+void processor_affinity(profile_t *procs)
+{
+    int ret;
+    cpu_set_t procset;
+    size_t procsize;
+
+    procsize = sizeof procset;
+    ret = sched_getaffinity(procs->pid, procsize, &procset);
+    if (ret == -1) {
+        procs->proc_affin = -1;
+    } else {
+        procs->proc_affin = CPU_COUNT(&procset);
+    }
+}   
