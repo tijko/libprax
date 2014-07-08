@@ -97,5 +97,7 @@ void max_proc_res(profile_t *process, int resource, int *value);
 
 void cur_proc_res(profile_t *process, int resource, int *value);
 
-// sets the current processor affinity in profile_t struct;
+// gets/sets the current processor affinity in profile_t struct;
 void processor_affinity(profile_t *procs);
+
+void set_processor_affinity(profile_t *procs, int cpu_affinity);
