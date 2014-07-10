@@ -105,7 +105,7 @@ int process_fd_stats(profile_t *process)
 void get_pid_nice(profile_t *process)
 {
     int nice_value;
-    nice_value  = getpriority(PRIO_PROCESS, process->pid);
+    nice_value = getpriority(PRIO_PROCESS, process->pid);
     process->nice = nice_value;
 }
 
@@ -207,22 +207,22 @@ void cur_proc_res(profile_t *process, int resource, int *value)
     }
 }
 
-void processor_affinity(profile_t *procs)
+void processor_affinity(profile_t *process)
 {
     int ret;
     cpu_set_t procset;
     size_t procsize;
 
     procsize = sizeof procset;
-    ret = sched_getaffinity(procs->pid, procsize, &procset);
+    ret = sched_getaffinity(process->pid, procsize, &procset);
     if (ret == -1) {
-        procs->cpu_affinity = -1;
+        process->cpu_affinity = -1;
     } else {
-        procs->cpu_affinity = CPU_COUNT(&procset);
+        process->cpu_affinity = CPU_COUNT(&procset);
     }
 }
 
-void set_processor_affinity(profile_t *procs, int cpu_affinity)
+void set_processor_affinity(profile_t *process, int cpu_affinity)
 {
     int ret, i;
     cpu_set_t procset;
@@ -233,10 +233,17 @@ void set_processor_affinity(profile_t *procs, int cpu_affinity)
         ;
     procsize = sizeof procset;
     
-    ret = sched_setaffinity(procs->pid, procsize, &procset);
+    ret = sched_setaffinity(process->pid, procsize, &procset);
     if (ret == -1) {
-        procs->cpu_affinity = -1;
+        process->cpu_affinity = -1;
     } else {
-        procs->cpu_affinity = cpu_affinity;
+        process->cpu_affinity = cpu_affinity;
     }
+}
+
+void process_sid(profile_t *process)
+{
+    pid_t sid;
+    sid = getsid(process->pid);
+    process->sid = sid;
 }
