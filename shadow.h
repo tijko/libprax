@@ -17,6 +17,7 @@
 #define LINKBUFSIZ 1024
 
 #include <sys/stat.h>
+#include <unistd.h>
 #include <sys/resource.h>
 
 // Typedef to contain stats of file-descriptors.
@@ -38,6 +39,7 @@ struct profile {
     char *pidstr;
     char *name;
     char *io_nice;
+    pid_t sid;
     unsigned max_res;
     unsigned cur_res;
     fdstats_t *fd;
@@ -100,6 +102,9 @@ void max_proc_res(profile_t *process, int resource, int *value);
 void cur_proc_res(profile_t *process, int resource, int *value);
 
 // gets/sets the current processor affinity in profile_t struct;
-void processor_affinity(profile_t *procs);
+void processor_affinity(profile_t *process);
 
-void set_processor_affinity(profile_t *procs, int cpu_affinity);
+void set_processor_affinity(profile_t *process, int cpu_affinity);
+
+// sets the session id field in profile_t struct
+void process_sid(profile_t *process);
