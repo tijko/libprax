@@ -40,8 +40,40 @@ struct profile {
     char *name;
     char *io_nice;
     pid_t sid;
-    unsigned max_res;
-    unsigned cur_res;
+    
+    rlim_t addr_space_cur;
+    rlim_t addr_space_max;
+    rlim_t core_cur;
+    rlim_t core_max;
+    rlim_t cpu_cur;
+    rlim_t cpu_max;
+    rlim_t data_cur;
+    rlim_t data_max;
+    rlim_t fsize_cur;
+    rlim_t fsize_max;
+    rlim_t locks_cur;
+    rlim_t locks_max;
+    rlim_t memlock_cur;
+    rlim_t memlock_max;
+    rlim_t msgqueue_cur;
+    rlim_t msgqueue_max;
+    rlim_t nice_cur;
+    rlim_t nice_max;
+    rlim_t nofile_cur;
+    rlim_t nofile_max;
+    rlim_t nproc_cur;
+    rlim_t nproc_max;
+    rlim_t rss_cur;
+    rlim_t rss_max;
+    rlim_t rtprio_cur;
+    rlim_t rtprio_max;
+    rlim_t rttime_cur;
+    rlim_t rttime_max;
+    rlim_t sigpending_cur;
+    rlim_t sigpending_max;
+    rlim_t stack_cur;
+    rlim_t stack_max;
+
     fdstats_t *fd;
 };
 
@@ -97,14 +129,17 @@ void get_ioprio(profile_t *process);
 void set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
-void max_proc_res(profile_t *process, int resource, int *value);
 
-void cur_proc_res(profile_t *process, int resource, int *value);
+void rlim_cur(profile_t *process, int resource);
+
+void rlim_max(profile_t *process, int resource);
+
+void set_rlim(profile_t *process, int resource, unsigned long lim);
 
 // gets/sets the current processor affinity in profile_t struct;
-void processor_affinity(profile_t *process);
+void cpu_affinity(profile_t *process);
 
-void set_processor_affinity(profile_t *process, int cpu_affinity);
+void setcpu_affinity(profile_t *process, int affinity);
 
 // sets the session id field in profile_t struct
 void process_sid(profile_t *process);
