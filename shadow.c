@@ -157,57 +157,7 @@ void set_ioprio(profile_t *process, int class, int value)
     }
 }
 
-void max_proc_res(profile_t *process, int resource, int *value)
-{
-    int ret;
-    if (value == NULL) {
-        struct rlimit *old_limit = malloc(sizeof *old_limit);        
-        struct rlimit *new_limit = NULL;
-        ret = prlimit(process->pid, resource, new_limit, old_limit);
-        if (ret == -1) {
-            process->max_res = (unsigned) errno;
-        } else {
-            process->max_res = (unsigned) old_limit->rlim_max;
-        } 
-    } else {
-        struct rlimit *new_limit = malloc(sizeof *new_limit);
-        struct rlimit *old_limit = NULL;
-        new_limit->rlim_max = *value;
-        ret = prlimit(process->pid, resource, new_limit, old_limit);
-        if (ret == -1) {
-            process->max_res = (unsigned) errno;
-        } else {
-            process->max_res = (unsigned) *value;
-        }
-    }
-}
-
-void cur_proc_res(profile_t *process, int resource, int *value)
-{
-    int ret;
-    if (value == NULL) {
-        struct rlimit *old_limit = malloc(sizeof *old_limit);        
-        struct rlimit *new_limit = NULL;
-        ret = prlimit(process->pid, resource, new_limit, old_limit);
-        if (ret == -1) {
-            process->cur_res = (unsigned) errno;
-        } else {
-            process->cur_res = (unsigned) old_limit->rlim_cur;
-        }
-    } else {
-        struct rlimit *new_limit = malloc(sizeof *new_limit);
-        struct rlimit *old_limit = NULL;
-        new_limit->rlim_cur = *value;
-        ret = prlimit(process->pid, resource, new_limit, old_limit);
-        if (ret == -1) {
-            process->cur_res = (unsigned) errno;
-        } else {
-            process->cur_res = (unsigned) *value;
-        }
-    }
-}
-
-void processor_affinity(profile_t *process)
+void cpu_affinity(profile_t *process)
 {
     int ret;
     cpu_set_t procset;
@@ -222,14 +172,14 @@ void processor_affinity(profile_t *process)
     }
 }
 
-void set_processor_affinity(profile_t *process, int cpu_affinity)
+void setcpu_affinity(profile_t *process, int affinity)
 {
     int ret, i;
     cpu_set_t procset;
     size_t procsize;
 
     CPU_ZERO(&procset);
-    for (i=0; i < cpu_affinity; CPU_SET(i++, &procset))
+    for (i=0; i < affinity; CPU_SET(i++, &procset))
         ;
     procsize = sizeof procset;
     
@@ -237,7 +187,7 @@ void set_processor_affinity(profile_t *process, int cpu_affinity)
     if (ret == -1) {
         process->cpu_affinity = -1;
     } else {
-        process->cpu_affinity = cpu_affinity;
+        process->cpu_affinity = affinity;
     }
 }
 
@@ -247,3 +197,62 @@ void process_sid(profile_t *process)
     sid = getsid(process->pid);
     process->sid = sid;
 }
+
+void rlim_cur(profile_t *process, int resource)
+{
+    struct rlimit *current = malloc(sizeof *current);
+    int ret = prlimit(process->pid, resource, NULL, current);
+    if (ret == -1) 
+        current->rlim_cur = -1;
+    switch (resource) {
+        case(RLIMIT_AS): 
+            process->addr_space_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_CORE):
+            process->core_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_CPU):
+            process->cpu_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_DATA):
+            process->data_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_FSIZE):
+            process->fsize_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_LOCKS):
+            process->locks_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_MEMLOCK):
+            process->memlock_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_MSGQUEUE):
+            process->msgqueue_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_NICE):
+            process->nice_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_NOFILE):
+            process->nofile_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_NPROC):
+            process->nproc_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_RSS):
+            process->rss_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_RTPRIO):
+            process->rtprio_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_SIGPENDING):
+            process->sigpending_cur = current->rlim_cur;
+            break;
+        case(RLIMIT_STACK):
+            process->stack_cur = current->rlim_cur;
+            break;
+    }        
+}
+
+void rlim_max(profile_t *process, int resource);
+
+void set_rlim(profile_t *process, int resource, unsigned long lim);
