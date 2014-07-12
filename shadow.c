@@ -8,11 +8,8 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/time.h>
-#include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/resource.h>
 
 
 int is_alive(profile_t *process)
@@ -253,6 +250,59 @@ void rlim_cur(profile_t *process, int resource)
     }        
 }
 
-void rlim_max(profile_t *process, int resource);
+void rlim_max(profile_t *process, int resource)
+{
+    struct rlimit *current = malloc(sizeof *current);
+    int ret = prlimit(process->pid, resource, NULL, current);
+    if (ret == -1) 
+        current->rlim_max = -1;
+    switch (resource) {
+        case(RLIMIT_AS): 
+            process->addr_space_max = current->rlim_max;
+            break;
+        case(RLIMIT_CORE):
+            process->core_max = current->rlim_max;
+            break;
+        case(RLIMIT_CPU):
+            process->cpu_max = current->rlim_max;
+            break;
+        case(RLIMIT_DATA):
+            process->data_max = current->rlim_max;
+            break;
+        case(RLIMIT_FSIZE):
+            process->fsize_max = current->rlim_max;
+            break;
+        case(RLIMIT_LOCKS):
+            process->locks_max = current->rlim_max;
+            break;
+        case(RLIMIT_MEMLOCK):
+            process->memlock_max = current->rlim_max;
+            break;
+        case(RLIMIT_MSGQUEUE):
+            process->msgqueue_max = current->rlim_max;
+            break;
+        case(RLIMIT_NICE):
+            process->nice_max = current->rlim_max;
+            break;
+        case(RLIMIT_NOFILE):
+            process->nofile_max = current->rlim_max;
+            break;
+        case(RLIMIT_NPROC):
+            process->nproc_max = current->rlim_max;
+            break;
+        case(RLIMIT_RSS):
+            process->rss_max = current->rlim_max;
+            break;
+        case(RLIMIT_RTPRIO):
+            process->rtprio_max = current->rlim_max;
+            break;
+        case(RLIMIT_SIGPENDING):
+            process->sigpending_max = current->rlim_max;
+            break;
+        case(RLIMIT_STACK):
+            process->stack_max = current->rlim_max;
+            break;
+    }        
+}
 
 void set_rlim(profile_t *process, int resource, unsigned long lim);
