@@ -1,7 +1,7 @@
-libshadow
+libprax
 =========
 
-C library for process monitoring.
+C library for accessing/handling process stats.
 
 #### Description:
 
