@@ -1,3 +1,4 @@
+#include "prax.h"
 #include <stdio.h>
 #include <sched.h>
 #include <fcntl.h>
@@ -9,8 +10,6 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
-
-#include "prax.h"
 
 
 int is_alive(profile_t *process)
