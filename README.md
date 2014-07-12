@@ -19,3 +19,9 @@ then:
     [user@user ~]$ make clean
 
 to remove object files.
+
+#### Uninstall:
+
+Run:
+
+    [user@user ~]$ sudo make uninstall
