@@ -11,7 +11,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
 $(OBJS): $(SRCS)
-	$(CC) $(CFLAGS) $(SRCS)
+	$(CC) $(SRCS) $(CFLAGS)
 
 install:
 	cp $(HEADER) /usr/include/     
