@@ -17,7 +17,7 @@ int is_alive(profile_t *process)
     DIR *proc_dir = opendir(PROC);
     struct dirent *cur_proc = malloc(sizeof *cur_proc);
     while ((cur_proc = readdir(proc_dir))) {
-        if (cur_proc->d_type ==  DT_DIR && 
+        if (cur_proc->d_type == DT_DIR && 
             !(strcmp(cur_proc->d_name, process->pidstr))) {
             closedir(proc_dir);
             return 0;
@@ -305,4 +305,60 @@ void rlim_max(profile_t *process, int resource)
     }        
 }
 
-void set_rlim(profile_t *process, int resource, unsigned long lim);
+void set_rlim(profile_t *process, int resource, unsigned long lim)
+{
+    int ret;
+    struct rlimit *newlim = malloc(sizeof *newlim);
+    ret = prlimit(process->pid, resource, NULL, newlim);
+    newlim->rlim_cur = lim;
+    ret = prlimit(process->pid, resource, newlim, NULL);
+    if (ret == -1) 
+        lim = 0;
+    switch (resource) {
+        case(RLIMIT_AS): 
+            process->addr_space_cur = lim;
+            break;
+        case(RLIMIT_CORE):
+            process->core_cur = lim;
+            break;
+        case(RLIMIT_CPU):
+            process->cpu_cur = lim;
+            break;
+        case(RLIMIT_DATA):
+            process->data_cur = lim;
+            break;
+        case(RLIMIT_FSIZE):
+            process->fsize_cur = lim;
+            break;
+        case(RLIMIT_LOCKS):
+            process->locks_cur = lim;
+            break;
+        case(RLIMIT_MEMLOCK):
+            process->memlock_cur = lim;
+            break;
+        case(RLIMIT_MSGQUEUE):
+            process->msgqueue_cur = lim;
+            break;
+        case(RLIMIT_NICE):
+            process->nice_cur = lim;
+            break;
+        case(RLIMIT_NOFILE):
+            process->nofile_cur = lim;
+            break;
+        case(RLIMIT_NPROC):
+            process->nproc_cur = lim;
+            break;
+        case(RLIMIT_RSS):
+            process->rss_cur = lim;
+            break;
+        case(RLIMIT_RTPRIO):
+            process->rtprio_cur = lim;
+            break;
+        case(RLIMIT_SIGPENDING):
+            process->sigpending_cur = lim;
+            break;
+        case(RLIMIT_STACK):
+            process->stack_cur = lim;
+            break;
+    }        
+}    
