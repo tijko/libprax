@@ -129,12 +129,7 @@ void get_ioprio(profile_t *process);
 void set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
-
-void rlim_cur(profile_t *process, int resource);
-
-void rlim_max(profile_t *process, int resource);
-
-void set_rlim(profile_t *process, int resource, unsigned long lim);
+void rlim_stat(profile_t *process, int resource, unsigned long *limit);
 
 // gets/sets the current processor affinity in profile_t struct;
 void cpu_affinity(profile_t *process);
@@ -143,3 +138,4 @@ void setcpu_affinity(profile_t *process, int affinity);
 
 // sets the session id field in profile_t struct
 void process_sid(profile_t *process);
+
