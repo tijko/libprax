@@ -195,170 +195,74 @@ void process_sid(profile_t *process)
     process->sid = sid;
 }
 
-void rlim_cur(profile_t *process, int resource)
+void rlim_stat(profile_t *process, int resource, unsigned long *lim)
 {
-    struct rlimit *current = malloc(sizeof *current);
-    int ret = prlimit(process->pid, resource, NULL, current);
-    if (ret == -1) 
-        current->rlim_cur = -1;
+    struct rlimit *limits = malloc(sizeof *limits);
+    prlimit(process->pid, resource, NULL, limits);
+    if (lim) {
+        limits->rlim_cur = *lim;
+        prlimit(process->pid, resource, limits, NULL);
+    }
     switch (resource) {
         case(RLIMIT_AS): 
-            process->addr_space_cur = current->rlim_cur;
+            process->addr_space_cur = limits->rlim_cur;
+            process->addr_space_max = limits->rlim_max;
             break;
         case(RLIMIT_CORE):
-            process->core_cur = current->rlim_cur;
+            process->core_cur = limits->rlim_cur;
+            process->core_max = limits->rlim_max;
             break;
         case(RLIMIT_CPU):
-            process->cpu_cur = current->rlim_cur;
+            process->cpu_cur = limits->rlim_cur;
+            process->cpu_max = limits->rlim_max;
             break;
         case(RLIMIT_DATA):
-            process->data_cur = current->rlim_cur;
+            process->data_cur = limits->rlim_cur;
+            process->data_max = limits->rlim_max;
             break;
         case(RLIMIT_FSIZE):
-            process->fsize_cur = current->rlim_cur;
+            process->fsize_cur = limits->rlim_cur;
+            process->fsize_max = limits->rlim_max;
             break;
         case(RLIMIT_LOCKS):
-            process->locks_cur = current->rlim_cur;
+            process->locks_cur = limits->rlim_cur;
+            process->locks_max = limits->rlim_max;
             break;
         case(RLIMIT_MEMLOCK):
-            process->memlock_cur = current->rlim_cur;
+            process->memlock_cur = limits->rlim_cur;
+            process->memlock_max = limits->rlim_max;
             break;
         case(RLIMIT_MSGQUEUE):
-            process->msgqueue_cur = current->rlim_cur;
+            process->msgqueue_cur = limits->rlim_cur;
+            process->msgqueue_max = limits->rlim_max;
             break;
         case(RLIMIT_NICE):
-            process->nice_cur = current->rlim_cur;
+            process->nice_cur = limits->rlim_cur;
+            process->nice_max = limits->rlim_max;
             break;
         case(RLIMIT_NOFILE):
-            process->nofile_cur = current->rlim_cur;
+            process->nofile_cur = limits->rlim_cur;
+            process->nofile_max = limits->rlim_max;
             break;
         case(RLIMIT_NPROC):
-            process->nproc_cur = current->rlim_cur;
+            process->nproc_cur = limits->rlim_cur;
+            process->nproc_max = limits->rlim_max;
             break;
         case(RLIMIT_RSS):
-            process->rss_cur = current->rlim_cur;
+            process->rss_cur = limits->rlim_cur;
+            process->rss_max = limits->rlim_max;
             break;
         case(RLIMIT_RTPRIO):
-            process->rtprio_cur = current->rlim_cur;
+            process->rtprio_cur = limits->rlim_cur;
+            process->rtprio_max = limits->rlim_max;
             break;
         case(RLIMIT_SIGPENDING):
-            process->sigpending_cur = current->rlim_cur;
+            process->sigpending_cur = limits->rlim_cur;
+            process->sigpending_max = limits->rlim_max;
             break;
         case(RLIMIT_STACK):
-            process->stack_cur = current->rlim_cur;
+            process->stack_cur = limits->rlim_cur;
+            process->stack_max = limits->rlim_max;
             break;
     }        
 }
-
-void rlim_max(profile_t *process, int resource)
-{
-    struct rlimit *current = malloc(sizeof *current);
-    int ret = prlimit(process->pid, resource, NULL, current);
-    if (ret == -1) 
-        current->rlim_max = -1;
-    switch (resource) {
-        case(RLIMIT_AS): 
-            process->addr_space_max = current->rlim_max;
-            break;
-        case(RLIMIT_CORE):
-            process->core_max = current->rlim_max;
-            break;
-        case(RLIMIT_CPU):
-            process->cpu_max = current->rlim_max;
-            break;
-        case(RLIMIT_DATA):
-            process->data_max = current->rlim_max;
-            break;
-        case(RLIMIT_FSIZE):
-            process->fsize_max = current->rlim_max;
-            break;
-        case(RLIMIT_LOCKS):
-            process->locks_max = current->rlim_max;
-            break;
-        case(RLIMIT_MEMLOCK):
-            process->memlock_max = current->rlim_max;
-            break;
-        case(RLIMIT_MSGQUEUE):
-            process->msgqueue_max = current->rlim_max;
-            break;
-        case(RLIMIT_NICE):
-            process->nice_max = current->rlim_max;
-            break;
-        case(RLIMIT_NOFILE):
-            process->nofile_max = current->rlim_max;
-            break;
-        case(RLIMIT_NPROC):
-            process->nproc_max = current->rlim_max;
-            break;
-        case(RLIMIT_RSS):
-            process->rss_max = current->rlim_max;
-            break;
-        case(RLIMIT_RTPRIO):
-            process->rtprio_max = current->rlim_max;
-            break;
-        case(RLIMIT_SIGPENDING):
-            process->sigpending_max = current->rlim_max;
-            break;
-        case(RLIMIT_STACK):
-            process->stack_max = current->rlim_max;
-            break;
-    }        
-}
-
-void set_rlim(profile_t *process, int resource, unsigned long lim)
-{
-    int ret;
-    struct rlimit *newlim = malloc(sizeof *newlim);
-    ret = prlimit(process->pid, resource, NULL, newlim);
-    newlim->rlim_cur = lim;
-    ret = prlimit(process->pid, resource, newlim, NULL);
-    if (ret == -1) 
-        lim = 0;
-    switch (resource) {
-        case(RLIMIT_AS): 
-            process->addr_space_cur = lim;
-            break;
-        case(RLIMIT_CORE):
-            process->core_cur = lim;
-            break;
-        case(RLIMIT_CPU):
-            process->cpu_cur = lim;
-            break;
-        case(RLIMIT_DATA):
-            process->data_cur = lim;
-            break;
-        case(RLIMIT_FSIZE):
-            process->fsize_cur = lim;
-            break;
-        case(RLIMIT_LOCKS):
-            process->locks_cur = lim;
-            break;
-        case(RLIMIT_MEMLOCK):
-            process->memlock_cur = lim;
-            break;
-        case(RLIMIT_MSGQUEUE):
-            process->msgqueue_cur = lim;
-            break;
-        case(RLIMIT_NICE):
-            process->nice_cur = lim;
-            break;
-        case(RLIMIT_NOFILE):
-            process->nofile_cur = lim;
-            break;
-        case(RLIMIT_NPROC):
-            process->nproc_cur = lim;
-            break;
-        case(RLIMIT_RSS):
-            process->rss_cur = lim;
-            break;
-        case(RLIMIT_RTPRIO):
-            process->rtprio_cur = lim;
-            break;
-        case(RLIMIT_SIGPENDING):
-            process->sigpending_cur = lim;
-            break;
-        case(RLIMIT_STACK):
-            process->stack_cur = lim;
-            break;
-    }        
-}    
