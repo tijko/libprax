@@ -110,11 +110,10 @@ void set_pid_nice(profile_t *process, int priority)
 {
     int ret;
     ret = setpriority(PRIO_PROCESS, process->pid, priority);
-    if (ret == -1) {
+    if (ret == -1)
         process->nice = ret;
-    } else {
+    else
         process->nice = priority;
-    }
 }
 
 void get_ioprio(profile_t *process)
@@ -147,11 +146,10 @@ void set_ioprio(profile_t *process, int class, int value)
     ioprio = IOPRIO_VALUE(class, value);
     setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
                                   process->pid, ioprio);
-    if (setioprio == -1) {
+    if (setioprio == -1)
         process->io_nice = NULL;
-    } else {
+    else
         get_ioprio(process);
-    }
 }
 
 void cpu_affinity(profile_t *process)
@@ -162,11 +160,10 @@ void cpu_affinity(profile_t *process)
 
     procsize = sizeof procset;
     ret = sched_getaffinity(process->pid, procsize, &procset);
-    if (ret == -1) {
+    if (ret == -1) 
         process->cpu_affinity = -1;
-    } else {
+    else 
         process->cpu_affinity = CPU_COUNT(&procset);
-    }
 }
 
 void setcpu_affinity(profile_t *process, int affinity)
@@ -181,11 +178,10 @@ void setcpu_affinity(profile_t *process, int affinity)
     procsize = sizeof procset;
     
     ret = sched_setaffinity(process->pid, procsize, &procset);
-    if (ret == -1) {
+    if (ret == -1) 
         process->cpu_affinity = -1;
-    } else {
+    else 
         process->cpu_affinity = affinity;
-    }
 }
 
 void process_sid(profile_t *process)
