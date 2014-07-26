@@ -4,9 +4,11 @@
 #ifdef __x86_64__
 #define SETIOPRIO 251
 #define GETIOPRIO 252
+#define TGKILL 234
 #elif __i386__
 #define SETIOPRIO 289
 #define GETIOPRIO 290
+#define TGKILL 270
 #endif
 
 
@@ -36,6 +38,8 @@ struct profile {
     int pid;
     int cpu_affinity;
     int nice;
+    int thread_count;
+    int threads[256];
     char *pidstr;
     char *name;
     char *io_nice;
@@ -96,7 +100,7 @@ void set_pid_nice(profile_t *process, int priority);
 char *construct_path(int pathparts, ...);
 
 #define COMM "/comm"
-
+#define TASK "/task"
 #define FD "/fd/"
 
 // Function to return the name of a pid.
@@ -139,3 +143,5 @@ void setcpu_affinity(profile_t *process, int affinity);
 // sets the session id field in profile_t struct
 void process_sid(profile_t *process);
 
+// populates the 'threads' array in process struct if any threads are running.
+void running_threads(profile_t *process);
