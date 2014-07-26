@@ -1,5 +1,7 @@
 #include "prax.h"
+
 #include <stdio.h>
+#include <ctype.h>
 #include <sched.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -261,4 +263,20 @@ void rlim_stat(profile_t *process, int resource, unsigned long *lim)
             process->stack_max = limits->rlim_max;
             break;
     }        
+}
+
+void running_threads(profile_t *process)
+{
+    int thread;
+    struct dirent *task;
+    char *path = construct_path(3, PROC, process->pidstr, TASK);
+    DIR *task_dir = opendir(path);
+    int thread_cnt = 0;
+    while ((task = readdir(task_dir))) {
+        if (!(ispunct(*(task->d_name)))) {
+            thread = atoi(task->d_name);
+            process->threads[thread_cnt++] = thread;
+        }
+    }
+    process->thread_count = thread_cnt;
 }
