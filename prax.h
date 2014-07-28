@@ -15,6 +15,8 @@
 #define MAXPID 16
 #define IOPRIO_SIZE 3
 
+#define LINE_SZ 256
+
 // Buffer size for readlink calls
 #define LINKBUFSIZ 1024
 
@@ -36,6 +38,7 @@ typedef struct profile profile_t;
 
 struct profile {
     int pid;
+    int tgid;
     int cpu_affinity;
     int nice;
     int thread_count;
@@ -99,6 +102,7 @@ void set_pid_nice(profile_t *process, int priority);
 // Constructs the path from the pid and specific dir being looked up.
 char *construct_path(int pathparts, ...);
 
+#define STATUS "/status"
 #define COMM "/comm"
 #define TASK "/task"
 #define FD "/fd/"
@@ -145,3 +149,9 @@ void process_sid(profile_t *process);
 
 // populates the 'threads' array in process struct if any threads are running.
 void running_threads(profile_t *process);
+
+// kills a thread under the current processes group with the provided id.
+void tkill(profile_t *process, int tid);
+
+// sets the 'tgid' field of the processes thread group id number.
+void gettgid(profile_t *process);
