@@ -5,6 +5,7 @@
 #include <sched.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <limits.h>
 #include <dirent.h>
@@ -279,4 +280,47 @@ void running_threads(profile_t *process)
         }
     }
     process->thread_count = thread_cnt;
+}
+
+void tkill(profile_t *process, int tid)
+{
+    int ret;
+    ret = syscall(TGKILL, process->tgid, tid, SIGTERM);
+    if (ret == -1)
+        printf("Thread kill failed :: id - %d\n", tid);
+}
+
+void gettgid(profile_t *process)
+{
+    int i, l;
+    FILE *fp;
+    size_t n;
+    char id[64];
+    char attr[4];
+    char *path;
+    char *tgid = "Tgid";
+    char *line = malloc(sizeof(char) * LINE_SZ);
+    
+    path = construct_path(3, PROC, process->pidstr, STATUS);
+    fp = fopen(path, "r");
+    if (fp == NULL) {
+        printf("Error: %s\n", strerror(errno));
+        return;
+    }
+    
+    while (getline(&line, &n, fp)) {
+        for (l=0; l < 4; l++) 
+            attr[l] = *(line + l);
+        attr[l] = '\0';
+        if (!(strcmp(tgid, attr))) {
+            i = 0;
+            for (;!(isdigit(*(line + l))); ++l)
+                ;
+            for (;*(line + l) != '\n'; ++l) 
+                id[i++] = *(line + l);
+            id[i] = '\0';
+            process->tgid = atoi(id); 
+            break;
+        }
+    }
 }
