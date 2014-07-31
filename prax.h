@@ -39,6 +39,7 @@ typedef struct profile profile_t;
 struct profile {
     int pid;
     int tgid;
+    int uid;
     int cpu_affinity;
     int nice;
     int thread_count;
@@ -155,3 +156,10 @@ void tkill(profile_t *process, int tid);
 
 // sets the 'tgid' field of the processes thread group id number.
 void gettgid(profile_t *process);
+
+// sets the 'uid' field of the processes uid number.
+void getpuid(profile_t *process);
+
+// passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid')
+// will parse the proc fs the processes status file and return said field.
+char *parse_status_fields(char *pid, char *field);
