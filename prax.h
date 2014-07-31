@@ -46,6 +46,7 @@ struct profile {
     int threads[256];
     char *pidstr;
     char *name;
+    char *username;
     char *io_nice;
     pid_t sid;
     
@@ -160,6 +161,9 @@ void gettgid(profile_t *process);
 // sets the 'uid' field of the processes uid number.
 void getpuid(profile_t *process);
 
-// passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid')
+// sets the 'username' field of process provided.
+void getusernam(profile_t *process);
+    
+// passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
 char *parse_status_fields(char *pid, char *field);
