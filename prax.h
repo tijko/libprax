@@ -44,6 +44,8 @@ struct profile {
     int nice;
     int thread_count;
     int threads[256];
+    long vol_ctxt_swt;
+    long invol_ctxt_swt;
     char *pidstr;
     char *name;
     char *username;
@@ -163,6 +165,9 @@ void getpuid(profile_t *process);
 
 // sets the 'username' field of process provided.
 void getusernam(profile_t *process);
+
+// will find the number voluntary context switches for a process.
+void voluntary_context_switches(profile_t *process);
     
 // passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
