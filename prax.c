@@ -359,3 +359,11 @@ void voluntary_context_switches(profile_t *process)
     if (vswitch) 
         process->vol_ctxt_swt = atol(vswitch);
 }
+
+void involuntary_context_switches(profile_t *process)
+{
+    char *invol_switch = "nonvoluntary_ctxt_switches";
+    char *ivswitch = parse_status_fields(process->pidstr, invol_switch);
+    if (ivswitch)
+        process->invol_ctxt_swt = atol(ivswitch);
+}
