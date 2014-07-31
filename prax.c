@@ -1,5 +1,6 @@
 #include "prax.h"
 
+#include <pwd.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <sched.h>
@@ -340,4 +341,12 @@ void getpuid(profile_t *process)
     char *uid = parse_status_fields(process->pidstr, uid_name);
     if (uid)
         process->uid = atoi(uid);
+}
+
+void getusernam(profile_t *process)
+{
+    if (!process->uid)
+        getpuid(process);
+    struct passwd *username = getpwuid(process->uid);
+    process->username = username->pw_name;
 }
