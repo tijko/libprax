@@ -168,6 +168,9 @@ void getusernam(profile_t *process);
 
 // will find the number voluntary context switches for a process.
 void voluntary_context_switches(profile_t *process);
+
+// will find the number involuntary context switches for a process.
+void involuntary_context_switches(profile_t *process);
     
 // passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
