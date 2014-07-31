@@ -290,37 +290,54 @@ void tkill(profile_t *process, int tid)
         printf("Thread kill failed :: id - %d\n", tid);
 }
 
-void gettgid(profile_t *process)
+char *parse_status_fields(char *pid, char *field)
 {
     int i, l;
     FILE *fp;
     size_t n;
+    size_t fieldlen = strlen(field);
+    
     char id[64];
-    char attr[4];
+    char attr[fieldlen];
     char *path;
-    char *tgid = "Tgid";
     char *line = malloc(sizeof(char) * LINE_SZ);
     
-    path = construct_path(3, PROC, process->pidstr, STATUS);
+    path = construct_path(3, PROC, pid, STATUS);
     fp = fopen(path, "r");
     if (fp == NULL) {
         printf("Error: %s\n", strerror(errno));
-        return;
+        return NULL;
     }
     
     while (getline(&line, &n, fp)) {
-        for (l=0; l < 4; l++) 
+        for (l=0; l < fieldlen; l++) 
             attr[l] = *(line + l);
         attr[l] = '\0';
-        if (!(strcmp(tgid, attr))) {
+        if (!(strcmp(field, attr))) { 
             i = 0;
-            for (;!(isdigit(*(line + l))); ++l)
+            for (;!(isdigit(*(line + l))); ++l) 
                 ;
             for (;*(line + l) != '\n'; ++l) 
                 id[i++] = *(line + l);
             id[i] = '\0';
-            process->tgid = atoi(id); 
             break;
         }
     }
+    return id;
+}
+
+void gettgid(profile_t *process)
+{
+    char *tgid_name = "Tgid";
+    char *tgid = parse_status_fields(process->pidstr, tgid_name); 
+    if (tgid)
+        process->tgid = atoi(tgid); 
+}
+
+void getpuid(profile_t *process)
+{
+    char *uid_name = "Uid";
+    char *uid = parse_status_fields(process->pidstr, uid_name);
+    if (uid)
+        process->uid = atoi(uid);
 }
