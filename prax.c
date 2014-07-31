@@ -298,7 +298,7 @@ char *parse_status_fields(char *pid, char *field)
     size_t n;
     size_t fieldlen = strlen(field);
     
-    char id[64];
+    char *id = malloc(sizeof(char) * 64);
     char attr[fieldlen];
     char *path;
     char *line = malloc(sizeof(char) * LINE_SZ);
@@ -321,10 +321,11 @@ char *parse_status_fields(char *pid, char *field)
             for (;*(line + l) != '\n'; ++l) 
                 id[i++] = *(line + l);
             id[i] = '\0';
-            break;
+            return id;
         }
     }
-    return id;
+    printf("Field not found: %s\n", field);
+    return NULL;
 }
 
 void gettgid(profile_t *process)
@@ -349,4 +350,12 @@ void getusernam(profile_t *process)
         getpuid(process);
     struct passwd *username = getpwuid(process->uid);
     process->username = username->pw_name;
+}
+
+void voluntary_context_switches(profile_t *process)
+{
+    char *vol_switch = "voluntary_ctxt_switches";
+    char *vswitch = parse_status_fields(process->pidstr, vol_switch);
+    if (vswitch) 
+        process->vol_ctxt_swt = atol(vswitch);
 }
