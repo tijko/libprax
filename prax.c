@@ -367,3 +367,11 @@ void involuntary_context_switches(profile_t *process)
     if (ivswitch)
         process->invol_ctxt_swt = atol(ivswitch);
 }
+
+void virtual_mem(profile_t *process)
+{
+    char *virtual_memory = "VmSize";
+    char *total_memory = parse_status_fields(process->pidstr, virtual_memory);
+    if (total_memory)
+        process->vmem = atol(total_memory);
+}
