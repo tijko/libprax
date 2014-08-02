@@ -46,6 +46,7 @@ struct profile {
     int threads[256];
     long vol_ctxt_swt;
     long invol_ctxt_swt;
+    long vmem;
     char *pidstr;
     char *name;
     char *username;
@@ -171,6 +172,9 @@ void voluntary_context_switches(profile_t *process);
 
 // will find the number involuntary context switches for a process.
 void involuntary_context_switches(profile_t *process);
+
+// specifies the amount of virtual memory in use by a process.
+void virtual_mem(profile_t *process);
     
 // passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
