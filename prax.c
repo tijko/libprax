@@ -298,34 +298,35 @@ char *parse_status_fields(char *pid, char *field)
     size_t n;
     size_t fieldlen = strlen(field);
     
-    char *id = malloc(sizeof(char) * 64);
-    char attr[fieldlen];
+    char *line;    
+    char *value = NULL;
+
     char *path;
-    char *line = malloc(sizeof(char) * LINE_SZ);
-    
     path = construct_path(3, PROC, pid, STATUS);
     fp = fopen(path, "r");
+
     if (fp == NULL) {
         printf("Error: %s\n", strerror(errno));
         return NULL;
     }
-    
+
+    n = 0;    
     while (getline(&line, &n, fp)) {
-        for (l=0; l < fieldlen; l++) 
-            attr[l] = *(line + l);
-        attr[l] = '\0';
-        if (!(strcmp(field, attr))) { 
-            i = 0;
+        *(line + fieldlen) = '\0';
+        if (!(strcmp(field, line))) {
+            i = 0; l = 0;
+            value = malloc(sizeof(char) * MAXVAL);
             for (;!(isdigit(*(line + l))); ++l) 
                 ;
-            for (;*(line + l) != '\n'; ++l) 
-                id[i++] = *(line + l);
-            id[i] = '\0';
-            return id;
+            for (;isdigit(*(line + l)); ++l, ++i) 
+                *(value + i) = *(line + l);
+            *(value + i) = '\0';
+            break;
         }
     }
-    printf("Field not found: %s\n", field);
-    return NULL;
+    fclose(fp);
+    free(path);
+    return value;
 }
 
 void gettgid(profile_t *process)
