@@ -179,3 +179,5 @@ void virtual_mem(profile_t *process);
 // passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
 char *parse_status_fields(char *pid, char *field);
+
+#define MAXVAL 64
