@@ -305,13 +305,11 @@ char *parse_status_fields(char *pid, char *field)
     path = construct_path(3, PROC, pid, STATUS);
     fp = fopen(path, "r");
 
-    if (fp == NULL) {
-        printf("Error: %s\n", strerror(errno));
+    if (fp == NULL) 
         return NULL;
-    }
 
     n = 0;    
-    while (getline(&line, &n, fp)) {
+    while (getline(&line, &n, fp) != -1) {
         *(line + fieldlen) = '\0';
         if (!(strcmp(field, line))) {
             i = 0; l = 0;
