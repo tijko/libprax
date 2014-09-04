@@ -299,32 +299,33 @@ char *parse_status_fields(char *pid, char *field)
     size_t fieldlen = strlen(field);
     
     char *line;    
-    char *value = NULL;
 
     char *path;
     path = construct_path(3, PROC, pid, STATUS);
     fp = fopen(path, "r");
 
-    if (fp == NULL) 
+    if (fp == NULL) {
+        free(path); 
         return NULL;
+    }
 
     n = 0;    
     while (getline(&line, &n, fp) != -1) {
         *(line + fieldlen) = '\0';
         if (!(strcmp(field, line))) {
-            i = 0; l = 0;
-            value = malloc(sizeof(char) * MAXVAL);
-            for (;!(isdigit(*(line + l))); ++l) 
+            i = 0, l = 0;
+            for (;!(isdigit(*(line + i))); ++i) 
                 ;
-            for (;isdigit(*(line + l)); ++l, ++i) 
-                *(value + i) = *(line + l);
-            *(value + i) = '\0';
+            for (;isdigit(*(line + i)); ++i, ++l) 
+                *(line + l) = *(line + i);
+            *(line + l) = '\0';
             break;
         }
+        line = NULL;
     }
     fclose(fp);
     free(path);
-    return value;
+    return line;
 }
 
 void gettgid(profile_t *process)
