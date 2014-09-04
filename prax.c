@@ -18,17 +18,18 @@
 
 int is_alive(profile_t *process)
 {
+    int alive = -1;
     DIR *proc_dir = opendir(PROC);
     struct dirent *cur_proc = malloc(sizeof *cur_proc);
     while ((cur_proc = readdir(proc_dir))) {
         if (cur_proc->d_type == DT_DIR && 
             !(strcmp(cur_proc->d_name, process->pidstr))) {
-            closedir(proc_dir);
-            return 0;
+            alive = 1;
+            break;
         }
     }
     closedir(proc_dir);
-    return -1;
+    return alive;
 }
 
 char *construct_path(int pathparts, ...)
