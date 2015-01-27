@@ -18,16 +18,21 @@
 
 int is_alive(profile_t *process)
 {
-    int alive = -1;
-    DIR *proc_dir = opendir(PROC);
-    struct dirent *cur_proc = malloc(sizeof *cur_proc);
-    while ((cur_proc = readdir(proc_dir))) {
+    int alive;
+    DIR *proc_dir;
+    struct dirent *cur_proc;
+
+    proc_dir = opendir(PROC);
+    if (proc_dir == NULL)
+        return -1;
+
+    for (alive=-1; (cur_proc = readdir(proc_dir));) 
         if (cur_proc->d_type == DT_DIR && 
             !(strcmp(cur_proc->d_name, process->pidstr))) {
             alive = 1;
             break;
         }
-    }
+
     closedir(proc_dir);
     return alive;
 }
