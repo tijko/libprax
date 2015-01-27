@@ -11,7 +11,6 @@
 #define TGKILL 270
 #endif
 
-
 #define MAXPID 16
 #define IOPRIO_SIZE 3
 
@@ -138,6 +137,7 @@ enum {
 
 // Returns the I/O scheduling class and priority of profiled pid.
 void get_ioprio(profile_t *process);
+
 // Sets the I/O scheduling class and priority of profiled pid.
 void set_ioprio(profile_t *process, int class, int value);
 
