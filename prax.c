@@ -49,7 +49,8 @@ char *construct_path(int pathparts, ...)
     for (args=0; args < pathparts; args++) {
         path_part = (char *) va_arg(part, char *);
         if (pathname == NULL)
-            pathname = malloc(sizeof(char) * strlen(path_part + 1));
+            pathname = calloc(sizeof(char) * strlen(path_part + 1),
+                              sizeof(char));
         else
             pathname = realloc(pathname, strlen(pathname) + 
                                          strlen(path_part) + 1);
@@ -63,19 +64,32 @@ char *construct_path(int pathparts, ...)
 
 void pid_name(profile_t *process)
 {
-    int alive = is_alive(process);
-    if (alive == -1) {
-        process->name = NULL;
-    } else {
-        char *path = construct_path(3, PROC, process->pidstr, COMM);
-        FILE *proc = fopen(path, "r");
-        char *name = NULL;
-        size_t n = 0;
+    FILE *proc;
+    size_t n;
+    char *name, *path;
+
+    if (is_alive(process)) {
+        path = construct_path(3, PROC, process->pidstr, COMM);
+
+        proc = fopen(path, "r");
+        if (proc == NULL)
+            goto name_error;
+
+        name = NULL;
+        n = 0;
+
         getline(&name, &n, proc);
         fclose(proc);
+
         name[strlen(name) - 1] = '\0';
         process->name = name;
+        return;
     }
+
+    name_error:
+        process->name = NULL;
+
+    return;
 }
 
 int process_fd_stats(profile_t *process)
