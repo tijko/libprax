@@ -39,21 +39,25 @@ int is_alive(profile_t *process)
 
 char *construct_path(int pathparts, ...)
 {
-    va_list path;
-    va_start(path, pathparts);
+    va_list part;
     int args;
-    size_t pathlen;
-    char *part;
-    char *partial_path;
-    char *pathname = calloc(sizeof(char) * PATH_MAX, sizeof(char));
+    char *path_part, *pathname;
+
+    pathname = NULL;
+    va_start(part, pathparts);
+
     for (args=0; args < pathparts; args++) {
-        part = va_arg(path, char *);
-        pathlen = strlen(part) + strlen(pathname) + 1;
-        partial_path = pathname;
-        pathname = calloc(sizeof(char) * PATH_MAX, sizeof(char));
-        snprintf(pathname, pathlen, "%s%s", partial_path, part);
+        path_part = (char *) va_arg(part, char *);
+        if (pathname == NULL)
+            pathname = malloc(sizeof(char) * strlen(path_part + 1));
+        else
+            pathname = realloc(pathname, strlen(pathname) + 
+                                         strlen(path_part) + 1);
+        strcat(pathname, path_part);
     }
-    va_end(path);
+
+    va_end(part);
+
     return pathname;
 }
 
