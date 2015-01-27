@@ -24,12 +24,12 @@ int is_alive(profile_t *process)
 
     proc_dir = opendir(PROC);
     if (proc_dir == NULL)
-        return -1;
+        return 0;
 
-    for (alive=-1; (cur_proc = readdir(proc_dir));) 
+    for (alive=0; (cur_proc = readdir(proc_dir));) 
         if (cur_proc->d_type == DT_DIR && 
             !(strcmp(cur_proc->d_name, process->pidstr))) {
-            alive = 1;
+            alive++;
             break;
         }
 
