@@ -94,36 +94,45 @@ void pid_name(profile_t *process)
 
 int process_fd_stats(profile_t *process)
 {
-    char *fullpath;
-    char *buf;
+    char *fullpath, *buf, *fdpath;
+    struct dirent *files;
     int open_fd;
-    char *fdpath = construct_path(3, PROC, process->pidstr, FD);
+    DIR *fd_dir;
+    fdstats_t *curr;
 
-    DIR *fd_dir = opendir(fdpath);
+    fdpath = construct_path(3, PROC, process->pidstr, FD);
+
+    fd_dir = opendir(fdpath);
     if (!fd_dir) 
         return -1;
 
-    struct dirent *files = malloc(sizeof *files);
-
     process->fd = malloc(sizeof *(process->fd));
-    fdstats_t *curr = process->fd;
+    curr = process->fd;
+
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
             fullpath = construct_path(2, fdpath, files->d_name);
             open_fd = open(fullpath, O_RDONLY);
-            if (open_fd != -1) {
-                buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
-                readlink(fullpath, buf, LINKBUFSIZ);
-                curr->file = buf;
-                curr->file_stats = malloc(sizeof *(curr->file_stats));
-                fstat(open_fd, curr->file_stats);
-                curr->next_fd = malloc(sizeof *(curr->next_fd));
-                curr = curr->next_fd;
-                curr->file = NULL;
-            }
+            if (open_fd == -1) 
+                goto free_path;
+
+            buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
+            readlink(fullpath, buf, LINKBUFSIZ);
+            curr->file = buf;
+            curr->file_stats = malloc(sizeof *curr->file_stats);
+            fstat(open_fd, curr->file_stats);
+            curr->next_fd = malloc(sizeof *curr->next_fd);
+            curr = curr->next_fd;
+            curr->file = NULL;
+
             free(fullpath);
         }
     }
+
+    free_path:
+
+        free(fdpath);
+
     return 0;
 }
 
