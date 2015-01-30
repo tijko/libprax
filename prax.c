@@ -176,26 +176,26 @@ void set_pid_nice(profile_t *process, int priority)
 
 void get_ioprio(profile_t *process)
 {
-    int ioprio;
-    int ioprio_class_num;
-    char *class_name;
-    int ioprio_nice;
-    size_t priolen;
+    int ioprio, ioprio_class_num, ioprio_level;
     char *priority;
-    char *ioprio_class[4] = {"none/", "rt/", "be/", "idle/"};
+
+    process->ioprio= NULL;
     ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
-    if (ioprio == -1) { 
-        process->io_nice = NULL;
-    } else {
-        get_pid_nice(process);
-        ioprio_class_num = IOPRIO_CLASS(ioprio);
-        class_name = ioprio_class[ioprio_class_num];
-        ioprio_nice = (process->nice + 20) / 5;
-        priolen = strlen(class_name) + IOPRIO_SIZE + 1;
-        priority = calloc(priolen, sizeof(char));
-        snprintf(priority, priolen, "%s%d", class_name, ioprio_nice);
-        process->io_nice = priority;
-    }
+    if (ioprio == -1)
+        return;
+
+    get_pid_nice(process);
+    ioprio_class_num = IOPRIO_CLASS(ioprio);
+
+    // XXX NOTE: allow for checks on class THEN level...
+
+    ioprio_level = (process->nice + 20) / 5;
+    priority = malloc(sizeof(char) * IOPRIO_LEN(class[ioprio_class_num]));
+
+    snprintf(priority, IOPRIO_LEN(class[ioprio_class_num]), 
+             "%s%d", class[ioprio_class_num], ioprio_level);
+
+    process->ioprio = priority;
 }
 
 void set_ioprio(profile_t *process, int class, int value)
@@ -205,7 +205,7 @@ void set_ioprio(profile_t *process, int class, int value)
     setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
                                   process->pid, ioprio);
     if (setioprio == -1)
-        process->io_nice = NULL;
+        process->ioprio = NULL;
     else
         get_ioprio(process);
 }
