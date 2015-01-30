@@ -23,6 +23,8 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
+static char *class[4] = {"none/", "rt/", "be/", "idle/"};
+
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
 
@@ -49,7 +51,7 @@ struct profile {
     char *pidstr;
     char *name;
     char *username;
-    char *io_nice;
+    char *ioprio;
     pid_t sid;
     
     rlim_t addr_space_cur;
@@ -134,6 +136,8 @@ enum {
 #define IOPRIO_CLASS(mask) ((mask) >> IOPRIO_SHIFT)
 #define IOPRIO_DATA(mask) ((mask) & IOPRIO_PRIO_MASK)
 #define IOPRIO_VALUE(class, data) (((class) << IOPRIO_SHIFT) | data)
+
+#define IOPRIO_LEN(class) strlen(class) + IOPRIO_SIZE + 1
 
 // Returns the I/O scheduling class and priority of profiled pid.
 void get_ioprio(profile_t *process);
