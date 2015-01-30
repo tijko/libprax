@@ -113,25 +113,46 @@ int process_fd_stats(profile_t *process)
         if (files->d_type == DT_LNK) {
             fullpath = construct_path(2, fdpath, files->d_name);
             open_fd = open(fullpath, O_RDONLY);
-            if (open_fd == -1) 
-                goto free_path;
+
+            if (open_fd == -1) {
+                free(fullpath); 
+                continue;
+            }
 
             buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
+            if (buf == NULL) {
+                free(fullpath);
+                break;
+            }
+
             readlink(fullpath, buf, LINKBUFSIZ);
             curr->file = buf;
+
             curr->file_stats = malloc(sizeof *curr->file_stats);
+            if (curr->file_stats == NULL) {
+                free(fullpath);
+                free(buf);
+                break;
+            }
+
             fstat(open_fd, curr->file_stats);
+
             curr->next_fd = malloc(sizeof *curr->next_fd);
+            if (curr->next_fd == NULL) {
+                free(fullpath);
+                free(buf);
+                free(curr->file_stats);
+                break;
+            }
+
             curr = curr->next_fd;
             curr->file = NULL;
-
+            close(open_fd);
             free(fullpath);
         }
     }
 
-    free_path:
-
-        free(fdpath);
+    free(fdpath);
 
     return 0;
 }
