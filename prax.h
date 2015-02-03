@@ -12,7 +12,7 @@
 #endif
 
 #define MAXPID 16
-#define IOPRIO_SIZE 3
+#define IOPRIO_SIZE 6 
 
 #define LINE_SZ 256
 
@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
-static char *class[4] = {"none/", "rt/", "be/", "idle/"};
+static char *class[4] = {"", "rt/", "be/", "idle"};
 
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
@@ -137,10 +137,12 @@ enum {
 #define IOPRIO_DATA(mask) ((mask) & IOPRIO_PRIO_MASK)
 #define IOPRIO_VALUE(class, data) (((class) << IOPRIO_SHIFT) | data)
 
-#define IOPRIO_LEN(class) strlen(class) + IOPRIO_SIZE + 1
+#define IOPRIO_LEN(class) strlen(class) + IOPRIO_SIZE
 
 // Returns the I/O scheduling class and priority of profiled pid.
 void get_ioprio(profile_t *process);
+
+void get_ioprio_nice(profile_t *process, int ioprio);
 
 // Sets the I/O scheduling class and priority of profiled pid.
 void set_ioprio(profile_t *process, int class, int value);
