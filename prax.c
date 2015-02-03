@@ -49,11 +49,9 @@ char *construct_path(int pathparts, ...)
     for (args=0; args < pathparts; args++) {
         path_part = (char *) va_arg(part, char *);
         if (pathname == NULL)
-            pathname = calloc(sizeof(char) * strlen(path_part + 1),
-                              sizeof(char));
+            pathname = calloc(sizeof(char) * strlen(path_part + 1), sizeof(char));
         else
-            pathname = realloc(pathname, strlen(pathname) + 
-                                         strlen(path_part) + 1);
+            pathname = realloc(pathname, strlen(pathname) + strlen(path_part) + 1);
         strcat(pathname, path_part);
     }
 
@@ -111,8 +109,12 @@ int process_fd_stats(profile_t *process)
 
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
+ 
             fullpath = construct_path(2, fdpath, files->d_name);
             open_fd = open(fullpath, O_RDONLY);
+            buf = NULL;
+            curr->file_stats = NULL;
+            curr->next_fd = NULL;
 
             if (open_fd == -1) {
                 free(fullpath); 
@@ -120,30 +122,21 @@ int process_fd_stats(profile_t *process)
             }
 
             buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
-            if (buf == NULL) {
-                free(fullpath);
-                break;
-            }
+            if (buf == NULL) 
+                goto error;
 
             readlink(fullpath, buf, LINKBUFSIZ);
             curr->file = buf;
 
             curr->file_stats = malloc(sizeof *curr->file_stats);
-            if (curr->file_stats == NULL) {
-                free(fullpath);
-                free(buf);
-                break;
-            }
+            if (curr->file_stats == NULL)
+                goto error;
 
             fstat(open_fd, curr->file_stats);
 
             curr->next_fd = malloc(sizeof *curr->next_fd);
-            if (curr->next_fd == NULL) {
-                free(fullpath);
-                free(buf);
-                free(curr->file_stats);
-                break;
-            }
+            if (curr->next_fd == NULL)
+                goto error;
 
             curr = curr->next_fd;
             curr->file = NULL;
@@ -153,6 +146,16 @@ int process_fd_stats(profile_t *process)
     }
 
     free(fdpath);
+    return 0;
+
+    error:
+        free(fullpath);
+        if (buf)
+            free(buf);
+        if (curr->file_stats)
+            free(curr->file_stats);
+        if (curr->next_fd)
+            free(curr->next_fd);
 
     return 0;
 }
@@ -176,26 +179,42 @@ void set_pid_nice(profile_t *process, int priority)
 
 void get_ioprio(profile_t *process)
 {
-    int ioprio, ioprio_class_num, ioprio_level;
-    char *priority;
+    int ioprio;
 
     process->ioprio= NULL;
     ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
     if (ioprio == -1)
         return;
 
+    if (IOPRIO_CLASS(ioprio) != 0) {
+        process->ioprio = malloc(sizeof(char) * 
+                          IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
+        snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
+                 "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
+    } else
+        get_ioprio_nice(process, ioprio);
+}
+
+void get_ioprio_nice(profile_t *process, int ioprio)
+{
+    int ioprio_level, prio;
+
     get_pid_nice(process);
-    ioprio_class_num = IOPRIO_CLASS(ioprio);
-
-    // XXX NOTE: allow for checks on class THEN level...
-
     ioprio_level = (process->nice + 20) / 5;
-    priority = malloc(sizeof(char) * IOPRIO_LEN(class[ioprio_class_num]));
+    prio = sched_getscheduler(process->pid);
 
-    snprintf(priority, IOPRIO_LEN(class[ioprio_class_num]), 
-             "%s%d", class[ioprio_class_num], ioprio_level);
-
-    process->ioprio = priority;
+    if (prio == SCHED_FIFO || prio == SCHED_RR) {        
+        process->ioprio = malloc(sizeof(char) * IOPRIO_LEN(class[1]));
+        snprintf(process->ioprio, IOPRIO_LEN(class[1]), 
+                 "%s%d", class[1], ioprio_level);
+    } else if (prio == SCHED_OTHER) {
+        process->ioprio = malloc(sizeof(char) * IOPRIO_LEN(class[2]));
+        snprintf(process->ioprio, IOPRIO_LEN(class[2]), 
+                 "%s%d", class[2], ioprio_level);
+    } else {
+        process->ioprio = malloc(sizeof(char) * strlen(class[3]) + 1);
+        snprintf(process->ioprio, IOPRIO_LEN(class[3]), "%s", class[3]);
+    }
 }
 
 void set_ioprio(profile_t *process, int class, int value)
