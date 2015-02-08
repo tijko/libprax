@@ -368,36 +368,36 @@ char *parse_status_fields(char *pid, char *field)
 {
     int i, l;
     FILE *fp;
-    size_t n;
-    size_t fieldlen = strlen(field);
+    size_t n, fieldlen;
     
-    char *line;    
-
-    char *path;
+    char *line, *path;    
     path = construct_path(3, PROC, pid, STATUS);
+
     fp = fopen(path, "r");
+    if (fp == NULL) 
+        goto file_error;
 
-    if (fp == NULL) {
-        free(path); 
-        return NULL;
-    }
-
-    n = 0;    
-    while (getline(&line, &n, fp) != -1) {
-        *(line + fieldlen) = '\0';
+    for (n=0, i=0, l=0, fieldlen = strlen(field);
+         getline(&line, &n, fp) != -1; 
+         *(line + fieldlen) = '\0') {
         if (!(strcmp(field, line))) {
-            i = 0, l = 0;
             for (;!(isdigit(*(line + i))); ++i) 
                 ;
             for (;isdigit(*(line + i)); ++i, ++l) 
                 *(line + l) = *(line + i);
             *(line + l) = '\0';
-            break;
+            goto line_found;
         }
-        line = NULL;
     }
-    fclose(fp);
-    free(path);
+
+    line = NULL;
+
+    line_found:
+        fclose(fp);
+
+    file_error:
+        free(path);
+
     return line;
 }
 
