@@ -187,3 +187,6 @@ void virtual_mem(profile_t *process);
 char *parse_status_fields(char *pid, char *field);
 
 #define MAXVAL 64
+
+// Initializer for the profile_t type.
+profile_t init_profile(void);
