@@ -448,3 +448,16 @@ void virtual_mem(profile_t *process)
     if (total_memory)
         process->vmem = atol(total_memory);
 }
+
+profile_t init_profile(void)
+{
+    profile_t process = {
+        .pidstr = NULL;
+        .name = NULL;
+        .username = NULL;
+        .ioprio = NULL;
+        .fd = NULL;
+    };
+
+    return process;    
+}
