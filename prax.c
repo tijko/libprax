@@ -81,11 +81,13 @@ void pid_name(profile_t *process)
 
         name[strlen(name) - 1] = '\0';
         process->name = name;
+        free(path);
         return;
     }
 
     name_error:
         process->name = NULL;
+        free(path);
 
     return;
 }
@@ -365,6 +367,8 @@ void running_threads(profile_t *process)
     
     count:
         process->thread_count = thread_cnt;
+
+    free(path);
 }
 
 void tkill(profile_t *process, int tid)
@@ -471,4 +475,19 @@ profile_t init_profile(void)
     };
 
     return process;    
+}
+
+void free_profile(profile_t *process)
+{
+    if (!process)
+        return;
+
+    if (process->pidstr)
+        free(process->pidstr);
+
+    if (process->name)
+        free(process->name);
+
+    if (process->ioprio)
+        free(process->ioprio);
 }
