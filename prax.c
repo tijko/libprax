@@ -29,7 +29,7 @@ int is_alive(profile_t *process)
     for (alive=0; (cur_proc = readdir(proc_dir));) 
         if (cur_proc->d_type == DT_DIR && 
             !(strcmp(cur_proc->d_name, process->pidstr))) {
-            alive++;
+            ++alive;
             break;
         }
 
@@ -70,8 +70,11 @@ void pid_name(profile_t *process)
         path = construct_path(3, PROC, process->pidstr, COMM);
 
         proc = fopen(path, "r");
-        if (proc == NULL)
-            goto name_error;
+        if (proc == NULL) {
+            free(path);
+            process->name = NULL;
+            return;
+        }
 
         name = NULL;
         n = 0;
@@ -85,9 +88,7 @@ void pid_name(profile_t *process)
         return;
     }
 
-    name_error:
-        process->name = NULL;
-        free(path);
+    process->name = NULL;
 
     return;
 }
@@ -120,6 +121,7 @@ int process_fd_stats(profile_t *process)
 
             if (open_fd == -1) {
                 free(fullpath); 
+                fullpath = NULL;
                 continue;
             }
 
@@ -147,11 +149,15 @@ int process_fd_stats(profile_t *process)
         }
     }
 
+    if (fullpath)
+        free(fullpath);
+
     free(fdpath);
     return 0;
 
     error:
         free(fullpath);
+        free(fdpath);
         if (buf)
             free(buf);
         if (curr->file_stats)
@@ -477,6 +483,19 @@ profile_t init_profile(void)
     return process;    
 }
 
+void free_profile_fd(profile_t *process)
+{
+    fdstats_t *curr;
+    fdstats_t *next;
+    
+    for (curr=process->fd; curr; curr=next) {
+        next = curr->next_fd;
+        free(curr->file);
+        free(curr->file_stats);
+        free(curr);
+    }
+}
+
 void free_profile(profile_t *process)
 {
     if (!process)
@@ -490,4 +509,7 @@ void free_profile(profile_t *process)
 
     if (process->ioprio)
         free(process->ioprio);
+
+    if (process->fd)
+        free_profile_fd(process);
 }
