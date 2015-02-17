@@ -146,6 +146,7 @@ int process_fd_stats(profile_t *process)
             curr->file = NULL;
             close(open_fd);
             free(fullpath);
+            fullpath = NULL;
         }
     }
 
