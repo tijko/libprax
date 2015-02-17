@@ -190,3 +190,9 @@ char *parse_status_fields(char *pid, char *field);
 
 // Initializer for the profile_t type.
 profile_t init_profile(void);
+
+// Free memory used by a profile_t type file descriptors field.
+void free_profile_fd(profile_t *process);
+
+// Free memory used by a profile_t type.
+void free_profile(profile_t *process);
