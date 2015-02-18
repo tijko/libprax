@@ -400,6 +400,7 @@ char *parse_status_fields(char *pid, char *field)
     char *line, *path;    
     path = construct_path(3, PROC, pid, STATUS);
 
+    line = NULL;
     fp = fopen(path, "r");
     if (fp == NULL) 
         goto file_error;
@@ -417,6 +418,7 @@ char *parse_status_fields(char *pid, char *field)
         }
     }
 
+    free(line);
     line = NULL;
 
     line_found:
@@ -432,16 +434,20 @@ void gettgid(profile_t *process)
 {
     char *tgid_name = "Tgid";
     char *tgid = parse_status_fields(process->pidstr, tgid_name); 
-    if (tgid)
+    if (tgid) {
         process->tgid = atoi(tgid); 
+        free(tgid);
+    }
 }
 
 void getpuid(profile_t *process)
 {
     char *uid_name = "Uid";
     char *uid = parse_status_fields(process->pidstr, uid_name);
-    if (uid)
+    if (uid) {
         process->uid = atoi(uid);
+        free(uid);
+    }
 }
 
 void getusernam(profile_t *process)
@@ -456,24 +462,30 @@ void voluntary_context_switches(profile_t *process)
 {
     char *vol_switch = "voluntary_ctxt_switches";
     char *vswitch = parse_status_fields(process->pidstr, vol_switch);
-    if (vswitch) 
+    if (vswitch) { 
         process->vol_ctxt_swt = atol(vswitch);
+        free(vswitch);
+    }
 }
 
 void involuntary_context_switches(profile_t *process)
 {
     char *invol_switch = "nonvoluntary_ctxt_switches";
     char *ivswitch = parse_status_fields(process->pidstr, invol_switch);
-    if (ivswitch)
+    if (ivswitch) {
         process->invol_ctxt_swt = atol(ivswitch);
+        free(ivswitch);
+    }
 }
 
 void virtual_mem(profile_t *process)
 {
     char *virtual_memory = "VmSize";
     char *total_memory = parse_status_fields(process->pidstr, virtual_memory);
-    if (total_memory)
+    if (total_memory) {
         process->vmem = atol(total_memory);
+        free(total_memory);
+    }
 }
 
 profile_t init_profile(void)
