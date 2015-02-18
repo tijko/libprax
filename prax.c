@@ -374,6 +374,8 @@ void running_threads(profile_t *process)
             process->threads[thread_cnt++] = tid;
         }
     }
+
+    closedir(task_dir);
     
     count:
         process->thread_count = thread_cnt;
