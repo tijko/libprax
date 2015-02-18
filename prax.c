@@ -152,7 +152,8 @@ int process_fd_stats(profile_t *process)
 
     if (fullpath)
         free(fullpath);
-
+    if (fd_dir)
+        closedir(fd_dir);
     free(fdpath);
     return 0;
 
@@ -161,6 +162,8 @@ int process_fd_stats(profile_t *process)
         free(fdpath);
         if (buf)
             free(buf);
+        if (fd_dir)
+            closedir(fd_dir);
         if (curr->file_stats)
             free(curr->file_stats);
         if (curr->next_fd)
