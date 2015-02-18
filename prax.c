@@ -49,8 +49,8 @@ char *construct_path(int pathparts, ...)
     for (args=0; args < pathparts; args++) {
         path_part = (char *) va_arg(part, char *);
         if (pathname == NULL)
-            pathname = calloc(sizeof(char) * strlen(path_part + 1), sizeof(char));
-        else
+            pathname = calloc(sizeof(char) * strlen(path_part) + 1, sizeof(char));
+        else 
             pathname = realloc(pathname, strlen(pathname) + strlen(path_part) + 1);
         strcat(pathname, path_part);
     }
