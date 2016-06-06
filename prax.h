@@ -40,10 +40,11 @@ typedef struct profile profile_t;
 
 struct profile {
     int pid;
-    int tgid;
     int uid;
-    int cpu_affinity;
+    int tgid;
+    int ctty;
     int nice;
+    int cpu_affinity;
     int thread_count;
     int threads[256];
     long vol_ctxt_swt;
@@ -186,6 +187,12 @@ void virtual_mem(profile_t *process);
 // passing in a `char *` of a processes pid and a field e.g. ('uid', 'tgid', 'username')
 // will parse the proc fs the processes status file and return said field.
 char *parse_status_fields(char *pid, char *field);
+
+// Parses the stat file of the procfs.  By passing in a field number the 
+// parser function will return the field that is listed after the number of 
+// spaces equal to that number.
+char *parse_stat(char *pid, int field);
+
 
 #define MAXVAL 64
 
