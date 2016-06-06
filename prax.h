@@ -20,6 +20,7 @@
 #define LINKBUFSIZ 1024
 
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
 
@@ -91,7 +92,7 @@ struct profile {
 };
 
 // Check if process exists.
-int is_alive(profile_t *process);
+bool is_alive(profile_t *process);
 
 // Count digit places in type int of the process being profiled.
 int pid_digit_places(int pid);
