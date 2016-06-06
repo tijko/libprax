@@ -7,6 +7,9 @@ TARGET = libprax.so
 SRCS = $(wildcard *.c) 
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
+.PHONY:
+	install uninstall clean
+
 $(TARGET): $(OBJS) 
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
@@ -26,3 +29,4 @@ uninstall:
 
 clean:
 	rm *.o
+
