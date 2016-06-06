@@ -12,28 +12,25 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
 
 
-int is_alive(profile_t *process)
+bool is_alive(profile_t *process)
 {
-    int alive;
-    DIR *proc_dir;
-    struct dirent *cur_proc;
+    char *proc_dir_path = malloc(sizeof(char) * PATH_MAX + 1);
+    if (!proc_dir_path)
+        return false;
 
-    proc_dir = opendir(PROC);
-    if (proc_dir == NULL)
-        return 0;
+    snprintf(proc_dir_path, PATH_MAX, "%s%s", PROC, process->pidstr);
+    DIR *proc_dir_handle = opendir(proc_dir_path);
+    bool alive = proc_dir_handle ? true : false;
 
-    for (alive=0; (cur_proc = readdir(proc_dir));) 
-        if (cur_proc->d_type == DT_DIR && 
-            !(strcmp(cur_proc->d_name, process->pidstr))) {
-            ++alive;
-            break;
-        }
+    if (alive)
+        closedir(proc_dir_handle);
 
-    closedir(proc_dir);
+    free(proc_dir_path);
     return alive;
 }
 
