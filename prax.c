@@ -427,6 +427,46 @@ char *parse_status_fields(char *pid, char *field)
     return line;
 }
 
+char *parse_stat(char *pid, int field)
+{
+    char *fieldstr = NULL;
+    
+    char *path = malloc(sizeof(char) * PATH_MAX + 1);
+    if (!path)
+        return NULL;
+
+    snprintf(path, PATH_MAX, "%s%s/stat", PROC, pid);
+
+    FILE *fh = fopen(path, "r");
+    if (!fh) 
+        goto free_path;
+
+    size_t n = 0;
+    char *line = NULL;
+    if (getline(&line, &n, fh) < 0)
+        goto close_fh;
+
+    char *delim = " ";
+    fieldstr = strtok(line, delim);
+    if (!fieldstr)
+        goto free_line;
+
+    int fieldno = 0;
+    while (fieldstr && fieldno < field) {
+        fieldno++;
+        fieldstr = strtok(NULL, delim);
+    }
+
+    free_line:
+        free(line);
+    close_fh:
+        fclose(fh);
+    free_path:
+        free(path);
+
+    return fieldstr;
+}
+
 void gettgid(profile_t *process)
 {
     char *tgid_name = "Tgid";
