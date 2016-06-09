@@ -34,27 +34,14 @@ bool is_alive(profile_t *process)
     return alive;
 }
 
-char *construct_path(int pathparts, ...)
+char *construct_path(char *fmt, int pathparts, ...)
 {
     va_list part;
-    int args;
-    char *path_part, *pathname;
-
-    pathname = NULL;
+    char *path;
     va_start(part, pathparts);
+    vasprintf(&path, fmt, part);
 
-    for (args=0; args < pathparts; args++) {
-        path_part = (char *) va_arg(part, char *);
-        if (pathname == NULL)
-            pathname = calloc(sizeof(char) * strlen(path_part) + 1, sizeof(char));
-        else 
-            pathname = realloc(pathname, strlen(pathname) + strlen(path_part) + 1);
-        strcat(pathname, path_part);
-    }
-
-    va_end(part);
-
-    return pathname;
+    return path;
 }
 
 void pid_name(profile_t *process)
@@ -64,7 +51,7 @@ void pid_name(profile_t *process)
     char *name, *path;
 
     if (is_alive(process)) {
-        path = construct_path(3, PROC, process->pidstr, COMM);
+        path = construct_path("%s%s%s", 3, PROC, process->pidstr, COMM);
 
         proc = fopen(path, "r");
         if (proc == NULL) {
@@ -98,7 +85,7 @@ int process_fd_stats(profile_t *process)
     DIR *fd_dir;
     fdstats_t *curr;
 
-    fdpath = construct_path(3, PROC, process->pidstr, FD);
+    fdpath = construct_path("%s%s%s", 3, PROC, process->pidstr, FD);
 
     fd_dir = opendir(fdpath);
     if (!fd_dir) 
@@ -110,7 +97,7 @@ int process_fd_stats(profile_t *process)
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
-            fullpath = construct_path(2, fdpath, files->d_name);
+            fullpath = construct_path("%s%s", 2, fdpath, files->d_name);
             open_fd = open(fullpath, O_RDONLY);
             buf = NULL;
             curr->file_stats = NULL;
@@ -358,7 +345,7 @@ void running_threads(profile_t *process)
     DIR *task_dir;
     char *path;
     
-    path = construct_path(3, PROC, process->pidstr, TASK);
+    path = construct_path("%s%s%s", 3, PROC, process->pidstr, TASK);
     thread_cnt = 0;
 
     task_dir = opendir(path);
@@ -395,7 +382,7 @@ char *parse_status_fields(char *pid, char *field)
     size_t n, fieldlen;
     
     char *line, *path;    
-    path = construct_path(3, PROC, pid, STATUS);
+    path = construct_path("%s%s%s", 3, PROC, pid, STATUS);
 
     line = NULL;
     fp = fopen(path, "r");
