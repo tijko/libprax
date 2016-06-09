@@ -29,4 +29,3 @@ uninstall:
 
 clean:
 	rm *.o
-
