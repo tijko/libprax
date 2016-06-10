@@ -16,9 +16,6 @@
 
 #define LINE_SZ 256
 
-// Buffer size for readlink calls
-#define LINKBUFSIZ 1024
-
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -106,9 +103,6 @@ void set_pid_nice(profile_t *process, int priority);
 
 #define PROC "/proc/"
 #define PROCLEN 6
-
-// Constructs the path from the pid and specific dir being looked up.
-char *construct_path(char *fmt, int pathparts, ...);
 
 #define STATUS "/status"
 #define COMM "/comm"
