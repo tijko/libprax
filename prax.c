@@ -12,10 +12,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
 
+#define CONSTRUCT_PATH(path, fmt, parts, ...) asprintf(&path, fmt, __VA_ARGS__)
 
 bool is_alive(profile_t *process)
 {
@@ -34,34 +34,20 @@ bool is_alive(profile_t *process)
     return alive;
 }
 
-char *construct_path(char *fmt, int pathparts, ...)
-{
-    va_list part;
-    char *path;
-    va_start(part, pathparts);
-    vasprintf(&path, fmt, part);
-
-    return path;
-}
-
 void pid_name(profile_t *process)
 {
-    FILE *proc;
-    size_t n;
-    char *name, *path;
-
     if (is_alive(process)) {
-        path = construct_path("%s%s%s", 3, PROC, process->pidstr, COMM);
-
-        proc = fopen(path, "r");
+        char *path;
+        CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
+        FILE *proc = fopen(path, "r");
         if (proc == NULL) {
             free(path);
             process->name = NULL;
             return;
         }
 
-        name = NULL;
-        n = 0;
+        char *name = NULL;
+        size_t n = 0;
 
         getline(&name, &n, proc);
         fclose(proc);
@@ -77,75 +63,83 @@ void pid_name(profile_t *process)
     return;
 }
 
+static void set_fdstat(char *path, fdstats_t *fdstats)
+{
+    int open_fd = open(path, O_RDONLY);
+
+    fdstats->file_stats = NULL;
+
+    if (open_fd == -1) 
+        return;
+
+    fdstats->file_stats = malloc(sizeof *(fdstats->file_stats));
+    fstat(open_fd, fdstats->file_stats);
+
+    close(open_fd);
+}
+
+static void set_realpath(char *path, fdstats_t *fdstats)
+{
+    char buf[PATH_MAX + 1];
+
+    fdstats->file = NULL;
+    if (readlink(path, buf, PATH_MAX) < 0)
+        return;
+
+    buf[PATH_MAX] = '\0';
+
+    fdstats->file = strdup(buf);
+}
+
 int process_fd_stats(profile_t *process)
 {
-    char *fullpath, *buf, *fdpath;
     struct dirent *files;
-    int open_fd;
-    DIR *fd_dir;
-    fdstats_t *curr;
 
-    fdpath = construct_path("%s%s%s", 3, PROC, process->pidstr, FD);
+    char *fdpath;
+    CONSTRUCT_PATH(fdpath, "%s%s%s", 3, PROC, process->pidstr, FD);
 
-    fd_dir = opendir(fdpath);
+    DIR *fd_dir = opendir(fdpath);
+
     if (!fd_dir) 
         return -1;
 
     process->fd = malloc(sizeof *(process->fd));
-    curr = process->fd;
-
+    fdstats_t *curr = process->fd;
+    
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
-            fullpath = construct_path("%s%s", 2, fdpath, files->d_name);
-            open_fd = open(fullpath, O_RDONLY);
-            buf = NULL;
-            curr->file_stats = NULL;
-            curr->next_fd = NULL;
+            char *path;
+            CONSTRUCT_PATH(path, "%s%s", 2, fdpath, files->d_name);
 
-            if (open_fd == -1) {
-                free(fullpath); 
-                fullpath = NULL;
+            set_fdstat(path, curr);
+            set_realpath(path, curr);
+
+            if (!curr->file) {
+                free(path);
                 continue;
             }
 
-            buf = calloc(sizeof(char) * LINKBUFSIZ, sizeof(char));
-            if (buf == NULL) 
-                goto error;
-
-            readlink(fullpath, buf, LINKBUFSIZ);
-            curr->file = buf;
-
-            curr->file_stats = malloc(sizeof *curr->file_stats);
-            if (curr->file_stats == NULL)
-                goto error;
-
-            fstat(open_fd, curr->file_stats);
-
             curr->next_fd = malloc(sizeof *curr->next_fd);
+
             if (curr->next_fd == NULL)
                 goto error;
 
             curr = curr->next_fd;
             curr->file = NULL;
-            close(open_fd);
-            free(fullpath);
-            fullpath = NULL;
+            free(path);
         }
     }
 
-    if (fullpath)
-        free(fullpath);
     if (fd_dir)
         closedir(fd_dir);
+
     free(fdpath);
+
     return 0;
 
     error:
-        free(fullpath);
         free(fdpath);
-        if (buf)
-            free(buf);
         if (fd_dir)
             closedir(fd_dir);
         if (curr->file_stats)
@@ -345,7 +339,7 @@ void running_threads(profile_t *process)
     DIR *task_dir;
     char *path;
     
-    path = construct_path("%s%s%s", 3, PROC, process->pidstr, TASK);
+    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, TASK);
     thread_cnt = 0;
 
     task_dir = opendir(path);
@@ -382,7 +376,7 @@ char *parse_status_fields(char *pid, char *field)
     size_t n, fieldlen;
     
     char *line, *path;    
-    path = construct_path("%s%s%s", 3, PROC, pid, STATUS);
+    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
 
     line = NULL;
     fp = fopen(path, "r");
