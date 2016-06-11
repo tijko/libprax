@@ -36,29 +36,30 @@ bool is_alive(profile_t *process)
 
 void pid_name(profile_t *process)
 {
-    if (is_alive(process)) {
-        char *path;
-        CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
-        FILE *proc = fopen(path, "r");
-        if (proc == NULL) {
-            free(path);
-            process->name = NULL;
-            return;
-        }
-
-        char *name = NULL;
-        size_t n = 0;
-
-        getline(&name, &n, proc);
-        fclose(proc);
-
-        name[strlen(name) - 1] = '\0';
-        process->name = name;
-        free(path);
+    if (!is_alive(process)) {
+        process->name = NULL;
         return;
     }
 
-    process->name = NULL;
+    char *path;
+    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
+    FILE *proc = fopen(path, "r");
+
+    char *name = NULL;
+
+    if (proc == NULL) 
+        goto done;
+
+    size_t n = 0;
+
+    getline(&name, &n, proc);
+    fclose(proc);
+
+    name[strlen(name) - 1] = '\0';
+
+done:
+    process->name = name;
+    free(path);
 
     return;
 }
