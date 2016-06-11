@@ -36,10 +36,8 @@ bool is_alive(profile_t *process)
 
 void pid_name(profile_t *process)
 {
-    if (!is_alive(process)) {
-        process->name = NULL;
-        return;
-    }
+    if (!is_alive(process)) 
+        goto assign_name;
 
     char *path;
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
@@ -48,7 +46,7 @@ void pid_name(profile_t *process)
     char *name = NULL;
 
     if (proc == NULL) 
-        goto done;
+        goto free_path;
 
     size_t n = 0;
 
@@ -57,9 +55,11 @@ void pid_name(profile_t *process)
 
     name[strlen(name) - 1] = '\0';
 
-done:
-    process->name = name;
+free_path:
     free(path);
+
+assign_name:
+    process->name = name;
 
     return;
 }
