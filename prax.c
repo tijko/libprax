@@ -148,10 +148,9 @@ void get_pid_nice(profile_t *process)
 
 void set_pid_nice(profile_t *process, int priority)
 {
-    int ret;
-    ret = setpriority(PRIO_PROCESS, process->pid, priority);
+    int ret = setpriority(PRIO_PROCESS, process->pid, priority);
     if (ret == -1)
-        process->nice = ret;
+        process->nice_error = ret;
     else
         process->nice = priority;
 }
