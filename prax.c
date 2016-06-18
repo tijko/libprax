@@ -61,35 +61,32 @@ free_path:
 assign_name:
     process->name = name;
 
-    return;
 }
 
 static void set_fdstat(char *path, fdstats_t *fdstats)
 {
-    int open_fd = open(path, O_RDONLY);
-
-    fdstats->file_stats = NULL;
+    int open_fd = open(path, O_RDONLY | O_NONBLOCK);
 
     if (open_fd == -1) 
         return;
 
-    fdstats->file_stats = malloc(sizeof *(fdstats->file_stats));
-    fstat(open_fd, fdstats->file_stats);
+    fstat(open_fd, &(fdstats->file_stats));
 
     close(open_fd);
 }
 
 static void set_realpath(char *path, fdstats_t *fdstats)
 {
-    char buf[PATH_MAX + 1];
+    char realpath[PATH_MAX + 1];
 
     fdstats->file = NULL;
-    if (readlink(path, buf, PATH_MAX) < 0)
+
+    if (readlink(path, realpath, PATH_MAX) < 0)
         return;
 
-    buf[PATH_MAX] = '\0';
+    realpath[PATH_MAX] = '\0';
 
-    fdstats->file = strdup(buf);
+    fdstats->file = strdup(realpath);
 }
 
 int process_fd_stats(profile_t *process)
@@ -116,19 +113,17 @@ int process_fd_stats(profile_t *process)
             set_fdstat(path, curr);
             set_realpath(path, curr);
 
-            if (!curr->file) {
-                free(path);
+            free(path);
+
+            if (!curr->file) 
                 continue;
-            }
 
             curr->next_fd = malloc(sizeof *curr->next_fd);
 
             if (curr->next_fd == NULL)
-                goto error;
+                break;
 
             curr = curr->next_fd;
-            curr->file = NULL;
-            free(path);
         }
     }
 
@@ -138,24 +133,17 @@ int process_fd_stats(profile_t *process)
     free(fdpath);
 
     return 0;
-
-    error:
-        free(fdpath);
-        if (fd_dir)
-            closedir(fd_dir);
-        if (curr->file_stats)
-            free(curr->file_stats);
-        if (curr->next_fd)
-            free(curr->next_fd);
-
-    return 0;
 }
 
 void get_pid_nice(profile_t *process)
 {
     int nice_value;
     nice_value = getpriority(PRIO_PROCESS, process->pid);
-    process->nice = nice_value;
+
+    if (errno != 0)
+        process->nice.pvalue = NULL;
+    else
+        process->nice.value = nice_value;
 }
 
 void set_pid_nice(profile_t *process, int priority)
@@ -163,9 +151,9 @@ void set_pid_nice(profile_t *process, int priority)
     int ret;
     ret = setpriority(PRIO_PROCESS, process->pid, priority);
     if (ret == -1)
-        process->nice = ret;
+        process->nice.value = ret;
     else
-        process->nice = priority;
+        process->nice.value = priority;
 }
 
 void get_ioprio(profile_t *process)
@@ -191,7 +179,7 @@ void get_ioprio_nice(profile_t *process, int ioprio)
     int ioprio_level, prio;
 
     get_pid_nice(process);
-    ioprio_level = (process->nice + 20) / 5;
+    ioprio_level = (process->nice.value + 20) / 5;
     prio = sched_getscheduler(process->pid);
 
     if (prio == SCHED_FIFO || prio == SCHED_RR) {        
@@ -528,7 +516,6 @@ void free_profile_fd(profile_t *process)
     for (curr=process->fd; curr; curr=next) {
         next = curr->next_fd;
         free(curr->file);
-        free(curr->file_stats);
         free(curr);
     }
 }
