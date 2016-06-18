@@ -35,13 +35,6 @@ struct fdstats {
 // Typedef of the process being profiled.
 typedef struct profile profile_t;
 
-typedef union niceness nice_t;
-
-union niceness {
-    int value;
-    int *pvalue;
-};
-
 struct profile {
     int pid;
     int uid;
@@ -58,8 +51,12 @@ struct profile {
     char *username;
     char *ioprio;
     pid_t sid;
-    nice_t nice;
 
+    struct {
+        int nice;
+        int nice_err;
+    };
+ 
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
     rlim_t core_cur;
