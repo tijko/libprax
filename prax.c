@@ -141,9 +141,9 @@ void get_pid_nice(profile_t *process)
     nice_value = getpriority(PRIO_PROCESS, process->pid);
 
     if (errno != 0)
-        process->nice.pvalue = NULL;
+        process->nice_err = errno;
     else
-        process->nice.value = nice_value;
+        process->nice = nice_value;
 }
 
 void set_pid_nice(profile_t *process, int priority)
@@ -151,9 +151,9 @@ void set_pid_nice(profile_t *process, int priority)
     int ret;
     ret = setpriority(PRIO_PROCESS, process->pid, priority);
     if (ret == -1)
-        process->nice.value = ret;
+        process->nice = ret;
     else
-        process->nice.value = priority;
+        process->nice = priority;
 }
 
 void get_ioprio(profile_t *process)
@@ -179,7 +179,7 @@ void get_ioprio_nice(profile_t *process, int ioprio)
     int ioprio_level, prio;
 
     get_pid_nice(process);
-    ioprio_level = (process->nice.value + 20) / 5;
+    ioprio_level = (process->nice + 20) / 5;
     prio = sched_getscheduler(process->pid);
 
     if (prio == SCHED_FIFO || prio == SCHED_RR) {        
