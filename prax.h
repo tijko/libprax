@@ -21,26 +21,32 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
-static char *class[4] = {"", "rt/", "be/", "idle"};
+const char *class[4] = {"", "rt/", "be/", "idle"};
 
 // Typedef to contain stats of file-descriptors.
 typedef struct fdstats fdstats_t;
 
 struct fdstats {
     char *file;
-    struct stat *file_stats;
+    struct stat file_stats;
     fdstats_t *next_fd;
 };
 
 // Typedef of the process being profiled.
 typedef struct profile profile_t;
 
+typedef union niceness nice_t;
+
+union niceness {
+    int value;
+    int *pvalue;
+};
+
 struct profile {
     int pid;
     int uid;
     int tgid;
     int ctty;
-    int nice;
     int cpu_affinity;
     int thread_count;
     int threads[256];
@@ -52,7 +58,8 @@ struct profile {
     char *username;
     char *ioprio;
     pid_t sid;
-    
+    nice_t nice;
+
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
     rlim_t core_cur;
