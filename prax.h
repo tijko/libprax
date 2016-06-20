@@ -13,7 +13,8 @@
 
 #define MAXPID 16
 #define IOPRIO_SIZE 6 
-
+#define STATUS_SIZE 1024
+#define MAX_FIELD 32
 #define LINE_SZ 256
 
 #include <unistd.h>
