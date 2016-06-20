@@ -137,30 +137,29 @@ int process_fd_stats(profile_t *process)
 
 void get_pid_nice(profile_t *process)
 {
-    int nice_value;
-    nice_value = getpriority(PRIO_PROCESS, process->pid);
+    int nice = getpriority(PRIO_PROCESS, process->pid);
 
     if (errno != 0)
         process->nice_err = errno;
     else
-        process->nice = nice_value;
+        process->nice = nice;
 }
 
 void set_pid_nice(profile_t *process, int priority)
 {
     int ret = setpriority(PRIO_PROCESS, process->pid, priority);
     if (ret == -1)
-        process->nice_error = ret;
+        process->nice_err = ret;
     else
         process->nice = priority;
 }
 
 void get_ioprio(profile_t *process)
 {
-    int ioprio;
-
     process->ioprio= NULL;
-    ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
+
+    int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
+
     if (ioprio == -1)
         return;
 
@@ -175,11 +174,10 @@ void get_ioprio(profile_t *process)
 
 void get_ioprio_nice(profile_t *process, int ioprio)
 {
-    int ioprio_level, prio;
-
+    // add check on nice field
     get_pid_nice(process);
-    ioprio_level = (process->nice + 20) / 5;
-    prio = sched_getscheduler(process->pid);
+    int ioprio_level = (process->nice + 20) / 5;
+    int prio = sched_getscheduler(process->pid);
 
     if (prio == SCHED_FIFO || prio == SCHED_RR) {        
         process->ioprio = malloc(sizeof(char) * IOPRIO_LEN(class[1]));
@@ -197,10 +195,9 @@ void get_ioprio_nice(profile_t *process, int ioprio)
 
 void set_ioprio(profile_t *process, int class, int value)
 {
-    int ioprio, setioprio;
-    ioprio = IOPRIO_VALUE(class, value);
-    setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
-                                  process->pid, ioprio);
+    int ioprio = IOPRIO_VALUE(class, value);
+    int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
+                                     process->pid, ioprio);
     if (setioprio == -1)
         process->ioprio = NULL;
     else
@@ -209,13 +206,10 @@ void set_ioprio(profile_t *process, int class, int value)
 
 void cpu_affinity(profile_t *process)
 {
-    int ret;
     cpu_set_t procset;
-    size_t procsize;
 
-    procsize = sizeof procset;
-    ret = sched_getaffinity(process->pid, procsize, &procset);
-    if (ret == -1) 
+    size_t procsize = sizeof procset;
+    if (sched_getaffinity(process->pid, procsize, &procset) < 0)
         process->cpu_affinity = -1;
     else 
         process->cpu_affinity = CPU_COUNT(&procset);
@@ -223,17 +217,14 @@ void cpu_affinity(profile_t *process)
 
 void setcpu_affinity(profile_t *process, int affinity)
 {
-    int ret, i;
     cpu_set_t procset;
-    size_t procsize;
 
     CPU_ZERO(&procset);
-    for (i=0; i < affinity; CPU_SET(i++, &procset))
+    for (int i=0; i < affinity; CPU_SET(i++, &procset))
         ;
-    procsize = sizeof procset;
+    size_t procsize = sizeof procset;
     
-    ret = sched_setaffinity(process->pid, procsize, &procset);
-    if (ret == -1) 
+    if (sched_setaffinity(process->pid, procsize, &procset) < 0)
         process->cpu_affinity = -1;
     else 
         process->cpu_affinity = affinity;
@@ -241,8 +232,7 @@ void setcpu_affinity(profile_t *process, int affinity)
 
 void process_sid(profile_t *process)
 {
-    pid_t sid;
-    sid = getsid(process->pid);
+    pid_t sid = getsid(process->pid);
     process->sid = sid;
 }
 
@@ -322,18 +312,17 @@ void rlim_stat(profile_t *process, int resource, unsigned long *lim)
 
 void running_threads(profile_t *process)
 {
-    int tid, thread_cnt;
     struct dirent *task;
-    DIR *task_dir;
-    char *path;
     
+    char *path;
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, TASK);
-    thread_cnt = 0;
 
-    task_dir = opendir(path);
+    DIR *task_dir = opendir(path);
     if (task_dir == NULL)
         goto count;
    
+    int tid;
+    int thread_cnt = 0;
     while ((task = readdir(task_dir))) {
         if (!(ispunct(*(task->d_name)))) {
             tid = atoi(task->d_name);
@@ -351,49 +340,49 @@ void running_threads(profile_t *process)
 
 void tkill(profile_t *process, int tid)
 {
-    int ret;
-    ret = syscall(TGKILL, process->tgid, tid, SIGTERM);
-    if (ret == -1)
+    if (syscall(TGKILL, process->tgid, tid, SIGTERM) < 0)
         printf("Thread kill failed :: id - %d\n", tid);
 }
 
 char *parse_status_fields(char *pid, char *field)
 {
-    int i, l;
-    FILE *fp;
-    size_t n, fieldlen;
-    
-    char *line, *path;    
+    char *path;    
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
 
-    line = NULL;
-    fp = fopen(path, "r");
+    FILE *fp = fopen(path, "r");
     if (fp == NULL) 
-        goto file_error;
+        goto free_path;
 
-    for (n=0, i=0, l=0, fieldlen = strlen(field);
-         getline(&line, &n, fp) != -1; 
-         *(line + fieldlen) = '\0') {
-        if (!(strcmp(field, line))) {
-            for (;!(isdigit(*(line + i))); ++i) 
-                ;
-            for (;isdigit(*(line + i)); ++i, ++l) 
-                *(line + l) = *(line + i);
-            *(line + l) = '\0';
-            goto line_found;
+    char status[STATUS_SIZE];
+    if (fread(status, sizeof(char), STATUS_SIZE - 1, fp) < 0)
+        goto close_path;
+
+    char *delimiter = "\n";
+    char *field_token = strtok(status, delimiter);
+
+    char *value = NULL;
+    while (field_token) {
+        if (strstr(field_token, field)) {
+            char *value_raw = strchr(field_token, '\t');
+            for (; !isdigit(*value_raw); value_raw++);
+            value = malloc(sizeof(char) * MAX_FIELD);
+            int idx = 0;
+            for (; idx < MAX_FIELD - 1 && isdigit(value_raw[idx]); idx++)
+                value[idx] = value_raw[idx];
+            value[idx] = '\0';
+            goto close_path;
         }
+
+        field_token = strtok(NULL, delimiter);
     }
 
-    free(line);
-    line = NULL;
+close_path:
+    fclose(fp);
 
-    line_found:
-        fclose(fp);
+free_path:
+    free(path);
 
-    file_error:
-        free(path);
-
-    return line;
+    return value;
 }
 
 char *parse_stat(char *pid, int field)
