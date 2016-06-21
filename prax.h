@@ -183,12 +183,6 @@ void involuntary_context_switches(profile_t *process);
 // specifies the amount of virtual memory in use by a process.
 void virtual_mem(profile_t *process);
     
-// Parses the stat file of the procfs.  By passing in a field number the 
-// parser function will return the field that is listed after the number of 
-// spaces equal to that number.
-char *parse_stat(char *pid, int field);
-
-
 #define MAXVAL 64
 
 // Initializer for the profile_t type.
