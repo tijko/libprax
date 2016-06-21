@@ -344,7 +344,7 @@ void tkill(profile_t *process, int tid)
         printf("Thread kill failed :: id - %d\n", tid);
 }
 
-char *parse_status_fields(char *pid, char *field)
+static char *parse_status_fields(char *pid, char *field)
 {
     char *path;    
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
