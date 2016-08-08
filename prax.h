@@ -143,8 +143,6 @@ enum {
 // Returns the I/O scheduling class and priority of profiled pid.
 void get_ioprio(profile_t *process);
 
-void get_ioprio_nice(profile_t *process, int ioprio);
-
 // Sets the I/O scheduling class and priority of profiled pid.
 void set_ioprio(profile_t *process, int class, int value);
 
