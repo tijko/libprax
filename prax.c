@@ -19,9 +19,7 @@
 
 bool is_alive(profile_t *process)
 {
-    char *proc_dir_path = malloc(sizeof(char) * PATH_MAX + 1);
-    if (!proc_dir_path)
-        return false;
+    char proc_dir_path[PATH_MAX + 1];
 
     snprintf(proc_dir_path, PATH_MAX, "%s%s", PROC, process->pidstr);
     DIR *proc_dir_handle = opendir(proc_dir_path);
@@ -30,20 +28,19 @@ bool is_alive(profile_t *process)
     if (alive)
         closedir(proc_dir_handle);
 
-    free(proc_dir_path);
     return alive;
 }
 
 void pid_name(profile_t *process)
 {
+    char *name = NULL;
+
     if (!is_alive(process)) 
         goto assign_name;
 
     char *path;
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
     FILE *proc = fopen(path, "r");
-
-    char *name = NULL;
 
     if (proc == NULL) 
         goto free_path;
@@ -60,7 +57,6 @@ free_path:
 
 assign_name:
     process->name = name;
-
 }
 
 static void set_fdstat(char *path, fdstats_t *fdstats)
@@ -137,6 +133,8 @@ int process_fd_stats(profile_t *process)
 
 void get_pid_nice(profile_t *process)
 {
+    errno = 0;
+
     int nice = getpriority(PRIO_PROCESS, process->pid);
 
     if (errno != 0)
@@ -147,9 +145,8 @@ void get_pid_nice(profile_t *process)
 
 void set_pid_nice(profile_t *process, int priority)
 {
-    int ret = setpriority(PRIO_PROCESS, process->pid, priority);
-    if (ret == -1)
-        process->nice_err = ret;
+    if (setpriority(PRIO_PROCESS, process->pid, priority) < 0)
+        process->nice_err = -1;
     else
         process->nice = priority;
 }
@@ -172,7 +169,7 @@ void get_ioprio(profile_t *process)
         get_ioprio_nice(process, ioprio);
 }
 
-void get_ioprio_nice(profile_t *process, int ioprio)
+static void get_ioprio_nice(profile_t *process, int ioprio)
 {
     // add check on nice field
     get_pid_nice(process);
@@ -321,13 +318,10 @@ void running_threads(profile_t *process)
     if (task_dir == NULL)
         goto count;
    
-    int tid;
     int thread_cnt = 0;
     while ((task = readdir(task_dir))) {
-        if (!(ispunct(*(task->d_name)))) {
-            tid = atoi(task->d_name);
-            process->threads[thread_cnt++] = tid;
-        }
+        if (!(ispunct(*(task->d_name)))) 
+            process->threads[thread_cnt++] = atoi(task->d_name);
     }
 
     closedir(task_dir);
