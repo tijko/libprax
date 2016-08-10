@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 
 #define CONSTRUCT_PATH(path, fmt, parts, ...) asprintf(&path, fmt, __VA_ARGS__)
@@ -151,24 +152,6 @@ void set_pid_nice(profile_t *process, int priority)
         process->nice = priority;
 }
 
-void get_ioprio(profile_t *process)
-{
-    process->ioprio= NULL;
-
-    int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
-
-    if (ioprio == -1)
-        return;
-
-    if (IOPRIO_CLASS(ioprio) != 0) {
-        process->ioprio = malloc(sizeof(char) * 
-                          IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
-        snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
-                 "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
-    } else
-        get_ioprio_nice(process, ioprio);
-}
-
 static void get_ioprio_nice(profile_t *process, int ioprio)
 {
     // add check on nice field
@@ -188,6 +171,24 @@ static void get_ioprio_nice(profile_t *process, int ioprio)
         process->ioprio = malloc(sizeof(char) * strlen(class[3]) + 1);
         snprintf(process->ioprio, IOPRIO_LEN(class[3]), "%s", class[3]);
     }
+}
+
+void get_ioprio(profile_t *process)
+{
+    process->ioprio= NULL;
+
+    int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
+
+    if (ioprio == -1)
+        return;
+
+    if (IOPRIO_CLASS(ioprio) != 0) {
+        process->ioprio = malloc(sizeof(char) * 
+                          IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
+        snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
+                 "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
+    } else
+        get_ioprio_nice(process, ioprio);
 }
 
 void set_ioprio(profile_t *process, int class, int value)
@@ -305,6 +306,107 @@ void rlim_stat(profile_t *process, int resource, unsigned long *lim)
             process->stack_max = limits.rlim_max;
             break;
     }        
+}
+
+void *parse_taskmsg(int req, struct taskmsg *msg)
+{
+    int msglength = msg->nl.nlmsg_len;
+
+    msglength -= (NLMSG_HDRLEN + GENL_HDRLEN);
+    struct nlattr *nla = GENLMSG_DATA(msg->gnl);
+
+    while (msglength > 0) {
+        if (nla->nla_type == req)
+            return (void *) ((char *) nla + NLA_HDRLEN);
+        int nla_msg_len = NLMSG_ALIGN(nla->nla_len);
+        msglength -= nla->nla_len;
+        nla = (struct nlattr *) ((char *) nla + nla_msg_len);        
+    }
+
+    return NULL;
+}
+
+int create_nl_conn(void)
+{
+    int nl_conn = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+
+    if (nl_conn < 0)
+        return -1;
+
+    struct sockaddr_nl addr;
+    memset(&addr, 0, sizeof addr);
+
+    addr.nl_family = AF_NETLINK;
+
+    if (bind(nl_conn, (struct sockaddr *) &addr, sizeof addr) < 0)
+        return -1;
+
+    return nl_conn;
+}
+
+int make_nl_req(int conn, char *msg, int msglength)
+{
+    struct sockaddr_nl addr;
+    memset(&addr, 0, sizeof addr);
+    addr.nl_family = AF_NETLINK;
+
+    while (msglength > 0) {
+        int bytes_sent = sendto(conn, msg, msglength, 0,
+                            (struct sockaddr *) &addr, sizeof addr);
+        if (bytes_sent < 0)
+            return -1;
+        msglength -= bytes_sent;
+        msg += bytes_sent;
+    }
+
+    return 0;
+}
+
+int recv_nl_req(int conn, struct taskmsg *msg)
+{
+    int bytes_recv = recv(conn, msg, sizeof *msg, 0);
+
+    if (bytes_recv < 0)
+        return -1;
+
+    return 0;
+}
+
+void build_req(struct taskmsg *msg, int nl_type, int cmd,
+               int nla_type, int nla_data_len, void *nla_data)
+{
+    msg->nl.nlmsg_flags = NLM_F_REQUEST;
+    msg->nl.nlmsg_type = nl_type;
+    msg->nl.nlmsg_len = NLMSG_HDRLEN + GENL_HDRLEN;
+
+    msg->gnl.version = 0x1;
+    msg->gnl.cmd = cmd;
+
+    struct nlattr *nla = GENLMSG_DATA(msg->gnl);
+    nla->nla_type = nla_type;
+    nla->nla_len = NLA_HDRLEN + nla_data_len;
+    msg->nl.nlmsg_len += NLMSG_ALIGN(nla->nla_len);
+    memcpy(NLA_DATA(nla), nla_data, nla_data_len); 
+}
+ 
+int get_nl_family_id(int nl_conn)
+{
+    struct taskmsg msg;
+    memset(&msg, 0, sizeof msg);
+
+    int data_len = strlen(TASKSTATS_GENL_NAME) + 1;
+    build_req(&msg, GENL_ID_CTRL, CTRL_CMD_GETFAMILY,
+             CTRL_ATTR_FAMILY_NAME, data_len, TASKSTATS_GENL_NAME);
+
+    if (make_nl_req(nl_conn, (char *) &msg, msg.nl.nlmsg_len) < 0)
+        return -1;
+
+    memset(&msg, 0, sizeof msg);
+    recv_nl_req(nl_conn, &msg);
+
+    int family_id = *(int *) parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg); 
+
+    return family_id;
 }
 
 void running_threads(profile_t *process)
@@ -469,17 +571,34 @@ void virtual_mem(profile_t *process)
     }
 }
 
-profile_t init_profile(void)
+profile_t *init_profile(int pid)
 {
-    profile_t process = {
-        .pidstr = NULL,
-        .name = NULL,
-        .username = NULL,
-        .ioprio = NULL,
-        .fd = NULL,
-    };
+    profile_t *profile = calloc(sizeof *profile, 1);
+    profile->pidstr = malloc(sizeof(char) * MAXPID);
+    snprintf(profile->pidstr, MAXPID - 1, "%d", pid);
 
-    return process;    
+    if (!is_alive(profile))
+        goto profile_error;
+ 
+    profile->pid = pid;
+
+    uid_t user = geteuid();
+
+    if (user == 0) {
+        profile->nl_conn = create_nl_conn();
+        profile->nl_family_id = get_nl_family_id(profile->nl_conn);
+    } else 
+        profile->nl_conn = -1;
+    profile->uid = user;
+
+    return profile; 
+
+profile_error:
+
+    free(profile->pidstr);
+    free(profile);
+
+    return NULL;
 }
 
 void free_profile_fd(profile_t *process)
