@@ -404,9 +404,12 @@ int get_nl_family_id(int nl_conn)
     memset(&msg, 0, sizeof msg);
     recv_nl_req(nl_conn, &msg);
 
-    int family_id = *(int *) parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg); 
+    void *family_id = parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg); 
 
-    return family_id;
+    if (family_id)
+        return *(int *) family_id;
+
+    return -1;
 }
 
 void running_threads(profile_t *process)
