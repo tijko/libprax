@@ -16,11 +16,15 @@
 #define STATUS_SIZE 1024
 #define MAX_FIELD 32
 #define LINE_SZ 256
+#define MAX_MSG 1024
 
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <linux/netlink.h>
+#include <linux/taskstats.h>
+#include <linux/genetlink.h>
 
 const char *class[4] = {"", "rt/", "be/", "idle"};
 
@@ -33,6 +37,12 @@ struct fdstats {
     fdstats_t *next_fd;
 };
 
+struct taskmsg {
+    struct nlmsghdr nl;
+    struct genlmsghdr gnl;
+    char buffer[MAX_MSG];
+};
+
 // Typedef of the process being profiled.
 typedef struct profile profile_t;
 
@@ -41,6 +51,8 @@ struct profile {
     int uid;
     int tgid;
     int ctty;
+    int nl_conn;
+    int nl_family_id;
     int cpu_affinity;
     int thread_count;
     int threads[256];
@@ -183,8 +195,28 @@ void virtual_mem(profile_t *process);
     
 #define MAXVAL 64
 
+// Set up netlink connection
+int create_nl_conn(void);
+
+#define GENLMSG_DATA(gnlmsg) (struct nlattr *) (((char *) &gnlmsg) + \
+                                                      GENL_HDRLEN)
+#define NLA_DATA(nla) (void *) ((char *) nla + NLA_HDRLEN)
+
+// Pack data for link request
+void build_nl_req(struct taskmsg *msg, int nl_type, int cmd,
+                int nla_type, int nla_data_len, void *nla_data);
+
+// Find the netlink family id
+int get_nl_family_id(int nl_conn);
+
+// Make netlink request
+int make_nl_req(int nl_conn, char *msg, int msglength);
+
+// Receive netlink request
+int recv_nl_req(int nl_conn, struct taskmsg *msg);
+
 // Initializer for the profile_t type.
-profile_t init_profile(void);
+profile_t *init_profile(int pid);
 
 // Free memory used by a profile_t type file descriptors field.
 void free_profile_fd(profile_t *process);
