@@ -113,7 +113,7 @@ bool is_alive(profile_t *process);
 int pid_digit_places(int pid);
 
 // Function returns the niceness of the pid being profiled.
-void get_pid_nice(profile_t *process);
+void get_process_nice(profile_t *process);
 
 // Sets the niceness of pid.
 void set_pid_nice(profile_t *process, int priority);
@@ -195,25 +195,9 @@ void virtual_mem(profile_t *process);
     
 #define MAXVAL 64
 
-// Set up netlink connection
-int create_nl_conn(void);
-
 #define GENLMSG_DATA(gnlmsg) (struct nlattr *) (((char *) &gnlmsg) + \
                                                       GENL_HDRLEN)
 #define NLA_DATA(nla) (void *) ((char *) nla + NLA_HDRLEN)
-
-// Pack data for link request
-void build_nl_req(struct taskmsg *msg, int nl_type, int cmd,
-                int nla_type, int nla_data_len, void *nla_data);
-
-// Find the netlink family id
-int get_nl_family_id(int nl_conn);
-
-// Make netlink request
-int make_nl_req(int nl_conn, char *msg, int msglength);
-
-// Receive netlink request
-int recv_nl_req(int nl_conn, struct taskmsg *msg);
 
 // Initializer for the profile_t type.
 profile_t *init_profile(int pid);
