@@ -64,12 +64,8 @@ struct profile {
     char *username;
     char *ioprio;
     pid_t sid;
-
-    struct {
-        int nice;
-        int nice_err;
-    };
- 
+    int nice;
+    int nice_err;
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
     rlim_t core_cur;
