@@ -288,15 +288,15 @@ static void get_ioprio_nice(profile_t *process, int ioprio)
     int prio = sched_getscheduler(process->pid);
 
     if (prio == SCHED_FIFO || prio == SCHED_RR) {        
-        process->ioprio = malloc(sizeof(char) * IOPRIO_LEN(class[1]));
+        process->ioprio = malloc(IOPRIO_LEN(class[1]));
         snprintf(process->ioprio, IOPRIO_LEN(class[1]), 
                  "%s%d", class[1], ioprio_level);
     } else if (prio == SCHED_OTHER) {
-        process->ioprio = malloc(sizeof(char) * IOPRIO_LEN(class[2]));
+        process->ioprio = malloc(IOPRIO_LEN(class[2]));
         snprintf(process->ioprio, IOPRIO_LEN(class[2]), 
                  "%s%d", class[2], ioprio_level);
     } else {
-        process->ioprio = malloc(sizeof(char) * strlen(class[3]) + 1);
+        process->ioprio = malloc(strlen(class[3]) + 1);
         snprintf(process->ioprio, IOPRIO_LEN(class[3]), "%s", class[3]);
     }
 }
@@ -311,8 +311,7 @@ void get_ioprio(profile_t *process)
         return;
 
     if (IOPRIO_CLASS(ioprio) != 0) {
-        process->ioprio = malloc(sizeof(char) * 
-                          IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
+        process->ioprio = malloc(IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
         snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
                  "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
     } else
@@ -477,7 +476,7 @@ static char *parse_status_fields(char *pid, char *field)
         goto free_path;
 
     char status[STATUS_SIZE];
-    if (fread(status, sizeof(char), STATUS_SIZE - 1, fp) < 0)
+    if (fread(status, 1, STATUS_SIZE - 1, fp) < 0)
         goto close_path;
 
     char *delimiter = "\n";
@@ -488,7 +487,7 @@ static char *parse_status_fields(char *pid, char *field)
         if (strstr(field_token, field)) {
             char *value_raw = strchr(field_token, '\t');
             for (; !isdigit(*value_raw); value_raw++);
-            value = malloc(sizeof(char) * MAX_FIELD);
+            value = malloc(MAX_FIELD);
             int idx = 0;
             for (; idx < MAX_FIELD - 1 && isdigit(value_raw[idx]); idx++)
                 value[idx] = value_raw[idx];
@@ -601,7 +600,7 @@ void virtual_mem(profile_t *process)
 profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
-    profile->pidstr = malloc(sizeof(char) * MAXPID);
+    profile->pidstr = malloc(MAXPID);
     snprintf(profile->pidstr, MAXPID - 1, "%d", pid);
 
     if (!is_alive(profile))
