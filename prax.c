@@ -75,34 +75,6 @@ static int create_nl_conn(void)
     return nl_conn;
 }
 
-static int make_nl_req(int conn, char *msg, int msglength)
-{
-    struct sockaddr_nl addr;
-    memset(&addr, 0, sizeof addr);
-    addr.nl_family = AF_NETLINK;
-
-    while (msglength > 0) {
-        int bytes_sent = sendto(conn, msg, msglength, 0,
-                            (struct sockaddr *) &addr, sizeof addr);
-        if (bytes_sent < 0)
-            return -1;
-        msglength -= bytes_sent;
-        msg += bytes_sent;
-    }
-
-    return 0;
-}
-
-static int recv_nl_req(int conn, struct taskmsg *msg)
-{
-    int bytes_recv = recv(conn, msg, sizeof *msg, 0);
-
-    if (bytes_recv < 0)
-        return -1;
-
-    return 0;
-}
-
 static inline void build_req(struct taskmsg *msg, int nl_type, int cmd,
                         int nla_type, int nla_data_len, void *nla_data)
 {
@@ -120,22 +92,65 @@ static inline void build_req(struct taskmsg *msg, int nl_type, int cmd,
     memcpy(NLA_DATA(nla), nla_data, nla_data_len); 
 }
  
-static int get_nl_family_id(int nl_conn)
+static int recv_nl_req(int conn, struct taskmsg *msg)
+{
+    int bytes_recv = recv(conn, msg, sizeof *msg, 0);
+
+    if (bytes_recv < 0)
+        return -1;
+
+    return 0;
+}
+
+static void *make_nl_req(int req, profile_t *process)
 {
     struct taskmsg msg;
     memset(&msg, 0, sizeof msg);
 
-    int data_len = strlen(TASKSTATS_GENL_NAME) + 1;
-    build_req(&msg, GENL_ID_CTRL, CTRL_CMD_GETFAMILY,
-             CTRL_ATTR_FAMILY_NAME, data_len, TASKSTATS_GENL_NAME);
+    int data_len;
 
-    if (make_nl_req(nl_conn, (char *) &msg, msg.nl.nlmsg_len) < 0)
-        return -1;
+    switch (req) {
+
+        case (CTRL_CMD_GETFAMILY):
+            data_len = strlen(TASKSTATS_GENL_NAME) + 1;
+            build_req(&msg, GENL_ID_CTRL, req, CTRL_ATTR_FAMILY_NAME,
+                       data_len, TASKSTATS_GENL_NAME);
+            break;
+        case (TASKSTATS_CMD_GET):
+            build_req(&msg, process->nl_family_id, req,
+                TASKSTATS_CMD_ATTR_PID, sizeof(int), &(process->pid));
+            break;
+
+    }
+
+    struct sockaddr_nl addr;
+    memset(&addr, 0, sizeof addr);
+    addr.nl_family = AF_NETLINK;
+
+    int msglength = msg.nl.nlmsg_len;
+    char *msg_buffer = (char *) &msg;
+
+    while (msglength > 0) {
+        int bytes_sent = sendto(process->nl_conn, msg_buffer, msglength, 0,
+                            (struct sockaddr *) &addr, sizeof addr);
+        if (bytes_sent < 0)
+            return NULL;
+        msglength -= bytes_sent;
+        msg_buffer += bytes_sent;
+    }
 
     memset(&msg, 0, sizeof msg);
-    recv_nl_req(nl_conn, &msg);
+    if (recv_nl_req(process->nl_conn, &msg) < 0)
+        return NULL;
 
-    void *family_id = parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg); 
+    void *task_ret = parse_taskmsg(req, &msg);
+
+    return task_ret;
+}
+
+static int get_nl_family_id(profile_t *process)
+{
+    void *family_id = make_nl_req(CTRL_CMD_GETFAMILY, process);
 
     if (family_id)
         return *(int *) family_id;
@@ -246,19 +261,8 @@ int process_fd_stats(profile_t *process)
 void get_process_nice(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskmsg msg;
-        memset(&msg, 0, sizeof msg);
-
-        build_req(&msg, process->nl_family_id, TASKSTATS_CMD_GET, 
-            TASKSTATS_CMD_ATTR_PID, sizeof(int), &(process->pid));
-
-        make_nl_req(process->nl_conn, (char *) &msg, msg.nl.nlmsg_len);
-        memset(&msg, 0, sizeof msg);
-
-        recv_nl_req(process->nl_conn, &msg);
-
-        struct taskstats *st = (struct taskstats *) parse_taskmsg(
-                                       TASKSTATS_TYPE_STATS, &msg);
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                TASKSTATS_TYPE_STATS, process);
         process->nice = st->ac_nice;
     }
 
@@ -538,35 +542,13 @@ close_fh:
 
     return strdup(fieldstr);
 }
-// mark as check
-void gettgid(profile_t *process)
-{
-    char *tgid_name = "Tgid";
-    char *tgid = parse_status_fields(process->pidstr, tgid_name); 
-    if (tgid) {
-        process->tgid = atoi(tgid); 
-        free(tgid);
-    }
-}
-// mark for deletion // or ...
-void getpuid(profile_t *process)
-{
-    char *uid_name = "Uid";
-    char *uid = parse_status_fields(process->pidstr, uid_name);
-    if (uid) {
-        process->uid = atoi(uid);
-        free(uid);
-    }
-}
 
 void getusernam(profile_t *process)
 {
-    if (!process->uid)
-        getpuid(process);
     struct passwd *username = getpwuid(process->uid);
     process->username = username->pw_name;
 }
-// mark as netlink // or ...
+
 void voluntary_context_switches(profile_t *process)
 {
     char *vol_switch = "voluntary_ctxt_switches";
@@ -612,7 +594,7 @@ profile_t *init_profile(int pid)
 
     if (user == 0) {
         profile->nl_conn = create_nl_conn();
-        profile->nl_family_id = get_nl_family_id(profile->nl_conn);
+        profile->nl_family_id = get_nl_family_id(profile);
     } else 
         profile->nl_conn = -1;
     profile->uid = user;
@@ -643,6 +625,9 @@ void free_profile(profile_t *process)
 {
     if (!process)
         return;
+
+    if (process->nl_conn != -1)
+        close(process->nl_conn);
 
     if (process->pidstr)
         free(process->pidstr);
