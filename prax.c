@@ -143,7 +143,12 @@ static void *make_nl_req(int req, profile_t *process)
     if (recv_nl_req(process->nl_conn, &msg) < 0)
         return NULL;
 
-    void *task_ret = parse_taskmsg(req, &msg);
+    void *task_ret = NULL;
+
+    if (req == TASKSTATS_CMD_GET)
+        task_ret = parse_taskmsg(TASKSTATS_TYPE_STATS, &msg);
+    else if (req == CTRL_CMD_GETFAMILY)
+        task_ret = parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg);
 
     return task_ret;
 }
@@ -262,8 +267,13 @@ void get_process_nice(profile_t *process)
 {
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
-                                TASKSTATS_TYPE_STATS, process);
-        process->nice = st->ac_nice;
+                                TASKSTATS_CMD_GET, process);
+        if (st)
+            process->nice = st->ac_nice;
+        else
+            process->nice_err = -1;
+
+        return;
     }
 
     errno = 0;
@@ -286,7 +296,6 @@ void set_pid_nice(profile_t *process, int priority)
 
 static void get_ioprio_nice(profile_t *process, int ioprio)
 {
-    // add check on nice field
     get_process_nice(process);
     int ioprio_level = (process->nice + 20) / 5;
     int prio = sched_getscheduler(process->pid);
@@ -551,12 +560,24 @@ void getusernam(profile_t *process)
 
 void voluntary_context_switches(profile_t *process)
 {
-    char *vol_switch = "voluntary_ctxt_switches";
-    char *vswitch = parse_status_fields(process->pidstr, vol_switch);
+    if (process->uid == 0) {
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                      TASKSTATS_CMD_GET, process);
+        if (st)
+            process->vol_ctxt_swt = st->nvcsw;
+        else
+            process->invol_ctxt_swt = -1;
+
+        return;
+    }
+
+    char *vswitch = parse_status_fields(process->pidstr, 
+                               "voluntary_ctxt_switches");
     if (vswitch) { 
         process->vol_ctxt_swt = atol(vswitch);
         free(vswitch);
-    }
+    } else
+        process->vol_ctxt_swt = -1;
 }
 // mark as netlink // or ...
 void involuntary_context_switches(profile_t *process)
