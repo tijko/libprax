@@ -32,6 +32,79 @@ bool is_alive(profile_t *process)
     return alive;
 }
 
+static char *parse_status_fields(char *pid, char *field)
+{
+    char *path;    
+    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
+
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL) 
+        goto free_path;
+
+    char status[STATUS_SIZE];
+    if (fread(status, 1, STATUS_SIZE - 1, fp) < 0)
+        goto close_path;
+
+    char *delimiter = "\n";
+    char *field_token = strtok(status, delimiter);
+
+    char *value = NULL;
+    while (field_token) {
+        if (strstr(field_token, field)) {
+            char *value_raw = strchr(field_token, '\t');
+            for (; !isdigit(*value_raw); value_raw++);
+            value = malloc(MAX_FIELD);
+            int idx = 0;
+            for (; idx < MAX_FIELD - 1 && isdigit(value_raw[idx]); idx++)
+                value[idx] = value_raw[idx];
+            value[idx] = '\0';
+            goto close_path;
+        }
+
+        field_token = strtok(NULL, delimiter);
+    }
+
+close_path:
+    fclose(fp);
+
+free_path:
+    free(path);
+
+    return value;
+}
+
+bool yama_enabled(void)
+{
+    char *yama = "/proc/sys/kernel/yama/ptrace_scope";
+
+    FILE *fh = fopen(yama, "r");
+
+    if (!fh)
+        return false;
+
+    char yama_byte;
+
+    if (fread(&yama_byte, 1, 1, fh) < 0)
+        return false;
+
+    return yama_byte == '1' ? true : false;
+}
+// Add checks on returns
+bool is_traced(profile_t *process)
+{
+    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid");
+
+    int tracer_pid = atoi(tracer_pidstr);
+
+    return tracer_pid ? true : false;
+}
+
+void get_trace_pid(profile_t *process)
+{
+    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid");
+    process->trace_pid = atoi(tracer_pidstr);
+}
+
 static void *parse_taskmsg(int req, struct taskmsg *msg)
 {
     int msglength = msg->nl.nlmsg_len;
@@ -477,47 +550,6 @@ void tkill(profile_t *process, int tid)
 {
     if (syscall(TGKILL, process->tgid, tid, SIGTERM) < 0)
         printf("Thread kill failed :: id - %d\n", tid);
-}
-
-static char *parse_status_fields(char *pid, char *field)
-{
-    char *path;    
-    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
-
-    FILE *fp = fopen(path, "r");
-    if (fp == NULL) 
-        goto free_path;
-
-    char status[STATUS_SIZE];
-    if (fread(status, 1, STATUS_SIZE - 1, fp) < 0)
-        goto close_path;
-
-    char *delimiter = "\n";
-    char *field_token = strtok(status, delimiter);
-
-    char *value = NULL;
-    while (field_token) {
-        if (strstr(field_token, field)) {
-            char *value_raw = strchr(field_token, '\t');
-            for (; !isdigit(*value_raw); value_raw++);
-            value = malloc(MAX_FIELD);
-            int idx = 0;
-            for (; idx < MAX_FIELD - 1 && isdigit(value_raw[idx]); idx++)
-                value[idx] = value_raw[idx];
-            value[idx] = '\0';
-            goto close_path;
-        }
-
-        field_token = strtok(NULL, delimiter);
-    }
-
-close_path:
-    fclose(fp);
-
-free_path:
-    free(path);
-
-    return value;
 }
 
 static char *parse_stat(char *pid, int field)
