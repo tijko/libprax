@@ -47,6 +47,9 @@ struct taskmsg {
 typedef struct profile profile_t;
 
 struct profile {
+    bool yama_enabled;
+    bool is_traced;
+    pid_t trace_pid;
     int pid;
     int uid;
     int tgid;
@@ -203,3 +206,13 @@ void free_profile_fd(profile_t *process);
 
 // Free memory used by a profile_t type.
 void free_profile(profile_t *process);
+
+// Checks if the yama security is enabled
+bool yama_enabled(void);
+
+// Check if the process is being traced
+bool is_traced(profile_t *process);
+
+// Gets the current tracer's pid
+void get_trace_pid(profile_t *process);
+
