@@ -59,6 +59,11 @@ struct profile {
     int cpu_affinity;
     int thread_count;
     int threads[256];
+    int signals_pending;
+    long signal_pending_mask;
+    long signals_blocked;
+    long signals_ignored;
+    long signals_caught;
     long vol_ctxt_swt;
     long invol_ctxt_swt;
     long vmem;
@@ -216,3 +221,17 @@ bool is_traced(profile_t *process);
 // Gets the current tracer's pid
 void get_trace_pid(profile_t *process);
 
+// Gets the number of pending signals for the process
+void get_pending_signals(profile_t *process);
+
+// Gets the mask of the currently queued signals for the process
+void get_pending_signals_mask(profile_t *process);
+
+// Gets the blocked signals for the process
+void get_signals_blocked(profile_t *process);
+
+// Gets the signals ignored for the process
+void get_signals_ignored(profile_t *process);
+
+// Gets the signals caught for the process
+void get_signals_caught(profile_t *process);
