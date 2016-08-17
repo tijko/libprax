@@ -32,7 +32,7 @@ bool is_alive(profile_t *process)
     return alive;
 }
 
-static char *parse_status_fields(char *pid, char *field)
+static char *parse_status_fields(char *pid, char *field, int (*accept_char)(int c))
 {
     char *path;    
     CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
@@ -55,7 +55,7 @@ static char *parse_status_fields(char *pid, char *field)
             for (; !isdigit(*value_raw); value_raw++);
             value = malloc(MAX_FIELD);
             int idx = 0;
-            for (; idx < MAX_FIELD - 1 && isdigit(value_raw[idx]); idx++)
+            for (; idx < MAX_FIELD - 1 && accept_char(value_raw[idx]); idx++)
                 value[idx] = value_raw[idx];
             value[idx] = '\0';
             goto close_path;
@@ -92,7 +92,8 @@ bool yama_enabled(void)
 // Add checks on returns
 bool is_traced(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid");
+    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid",
+                                              isdigit);
 
     int tracer_pid = atoi(tracer_pidstr);
 
@@ -101,7 +102,8 @@ bool is_traced(profile_t *process)
 
 void get_trace_pid(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid");
+    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid",
+                                              isdigit);
     process->trace_pid = atoi(tracer_pidstr);
 }
 
@@ -234,6 +236,51 @@ static int get_nl_family_id(profile_t *process)
         return *(int *) family_id;
 
     return -1;
+}
+
+void get_pending_signals(profile_t *process)
+{
+    char *signals_pending = parse_status_fields(process->pidstr, "SigQ", 
+                                                isdigit);
+
+    if (!signals_pending) return;
+    process->signals_pending = atoi(signals_pending);
+}
+
+void get_pending_signals_mask(profile_t *process)
+{
+   char *pending_signals = parse_status_fields(process->pidstr, "SigPnd", 
+                                               isalnum);
+
+    if (!pending_signals) return;
+    process->signal_pending_mask = strtol(pending_signals, NULL, 16);
+}
+
+void get_signals_blocked(profile_t *process)
+{
+    char *signals_blocked = parse_status_fields(process->pidstr, "SigBlk", 
+                                                isalnum);
+
+    if (!signals_blocked) return;
+    process->signals_blocked = strtol(signals_blocked, NULL, 16);
+}
+
+void get_signals_ignored(profile_t *process)
+{
+    char *signals_ignored = parse_status_fields(process->pidstr, "SigIgn", 
+                                                isalnum);
+
+    if (!signals_ignored) return;
+    process->signals_ignored = strtol(signals_ignored, NULL, 16);
+}
+
+void get_signals_caught(profile_t *process)
+{
+    char *signals_caught = parse_status_fields(process->pidstr, "SigCgt", 
+                                               isalnum);
+
+    if (!signals_caught) return;
+    process->signals_caught = strtol(signals_caught, NULL, 16);
 }
 
 void pid_name(profile_t *process)
@@ -604,7 +651,7 @@ void voluntary_context_switches(profile_t *process)
     }
 
     char *vswitch = parse_status_fields(process->pidstr, 
-                               "voluntary_ctxt_switches");
+                               "voluntary_ctxt_switches", isdigit);
     if (vswitch) { 
         process->vol_ctxt_swt = atol(vswitch);
         free(vswitch);
@@ -615,7 +662,8 @@ void voluntary_context_switches(profile_t *process)
 void involuntary_context_switches(profile_t *process)
 {
     char *invol_switch = "nonvoluntary_ctxt_switches";
-    char *ivswitch = parse_status_fields(process->pidstr, invol_switch);
+    char *ivswitch = parse_status_fields(process->pidstr, invol_switch, 
+                                         isdigit);
     if (ivswitch) {
         process->invol_ctxt_swt = atol(ivswitch);
         free(ivswitch);
@@ -625,7 +673,8 @@ void involuntary_context_switches(profile_t *process)
 void virtual_mem(profile_t *process)
 {
     char *virtual_memory = "VmSize";
-    char *total_memory = parse_status_fields(process->pidstr, virtual_memory);
+    char *total_memory = parse_status_fields(process->pidstr, virtual_memory, 
+                                             isdigit);
     if (total_memory) {
         process->vmem = atol(total_memory);
         free(total_memory);
