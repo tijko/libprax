@@ -46,6 +46,12 @@ struct taskmsg {
 // Typedef of the process being profiled.
 typedef struct profile profile_t;
 
+/*
+ * Uptime - add a field to show the process' creation time
+ * and total uptime at point of call.
+ *
+ */
+
 struct profile {
     bool yama_enabled;
     bool is_traced;
