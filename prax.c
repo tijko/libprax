@@ -657,7 +657,7 @@ void voluntary_context_switches(profile_t *process)
         if (st)
             process->vol_ctxt_swt = st->nvcsw;
         else
-            process->invol_ctxt_swt = -1;
+            process->vol_ctxt_swt = -1;
 
         return;
     }
@@ -670,9 +670,20 @@ void voluntary_context_switches(profile_t *process)
     } else
         process->vol_ctxt_swt = -1;
 }
-// mark as netlink // or ...
+
 void involuntary_context_switches(profile_t *process)
 {
+    if (process->uid == 0) {
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                      TASKSTATS_CMD_GET, process);
+        if (st)
+            process->invol_ctxt_swt = st->nivcsw;
+        else
+            process->invol_ctxt_swt = -1;
+
+        return;
+    }
+
     char *invol_switch = "nonvoluntary_ctxt_switches";
     char *ivswitch = parse_status_fields(process->pidstr, invol_switch, 
                                          isdigit);
@@ -681,9 +692,20 @@ void involuntary_context_switches(profile_t *process)
         free(ivswitch);
     }
 }
-// mark as netlink // or ...
+
 void virtual_mem(profile_t *process)
 {
+    if (process->uid == 0) {
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                      TASKSTATS_CMD_GET, process);
+        if (st)
+            process->vmem = st->virtmem;
+        else
+            process->vmem = -1;
+
+        return;
+    }
+
     char *virtual_memory = "VmSize";
     char *total_memory = parse_status_fields(process->pidstr, virtual_memory, 
                                              isdigit);
