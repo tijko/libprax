@@ -285,6 +285,18 @@ void get_signals_caught(profile_t *process)
 
 void pid_name(profile_t *process)
 {
+    if (process->uid == 0) {
+
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                TASKSTATS_CMD_GET, process);
+        if (st)
+            process->name = strdup(st->ac_comm);
+        else
+            process->name = NULL;
+
+        return;
+    }
+
     char *name = NULL;
 
     if (!is_alive(process)) 
