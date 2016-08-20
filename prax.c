@@ -693,6 +693,21 @@ void involuntary_context_switches(profile_t *process)
     }
 }
 
+void get_start_time(profile_t *process)
+{
+    if (process->uid == 0) {
+        struct taskstats *st = (struct taskstats *) make_nl_req(
+                                      TASKSTATS_CMD_GET, process);
+        if (st)
+            process->start_time = st->ac_btime;
+        else
+            process->start_time = -1;
+    }
+
+    char *start = parse_stat(process->pidstr, 22);
+    process->start_time = strtol(start, NULL, 0);
+}
+
 void virtual_mem(profile_t *process)
 {
     if (process->uid == 0) {

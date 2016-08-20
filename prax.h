@@ -112,7 +112,7 @@ struct profile {
     rlim_t sigpending_max;
     rlim_t stack_cur;
     rlim_t stack_max;
-
+    long long start_time;
     fdstats_t *fd;
 };
 
@@ -241,3 +241,6 @@ void get_signals_ignored(profile_t *process);
 
 // Gets the signals caught for the process
 void get_signals_caught(profile_t *process);
+
+// Gets the start time for the process
+void get_start_time(profile_t *process);
