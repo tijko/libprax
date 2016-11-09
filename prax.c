@@ -240,47 +240,66 @@ static int get_nl_family_id(profile_t *process)
 
 void get_pending_signals(profile_t *process)
 {
+    // return error no
+    if (!process || !process->psig)
+        return;
     char *signals_pending = parse_status_fields(process->pidstr, "SigQ", 
                                                 isdigit);
 
     if (!signals_pending) return;
-    process->signals_pending = atoi(signals_pending);
+    process->psig->signals_pending = atoi(signals_pending);
 }
 
 void get_pending_signals_mask(profile_t *process)
 {
+    // return error no
+    if (!process || !process->psig)
+        return;
+
    char *pending_signals = parse_status_fields(process->pidstr, "SigPnd", 
                                                isalnum);
 
     if (!pending_signals) return;
-    process->signal_pending_mask = strtol(pending_signals, NULL, 16);
+    process->psig->signal_pending_mask = strtol(pending_signals, NULL, 16);
 }
 
 void get_signals_blocked(profile_t *process)
 {
+    // return error no
+    if (!process || !process->psig)
+        return;
+
     char *signals_blocked = parse_status_fields(process->pidstr, "SigBlk", 
                                                 isalnum);
 
     if (!signals_blocked) return;
-    process->signals_blocked = strtol(signals_blocked, NULL, 16);
+    process->psig->signals_blocked = strtol(signals_blocked, NULL, 16);
 }
 
 void get_signals_ignored(profile_t *process)
 {
+    // return error no
+    if (!process || !process->psig)
+        return;
+
     char *signals_ignored = parse_status_fields(process->pidstr, "SigIgn", 
                                                 isalnum);
 
     if (!signals_ignored) return;
-    process->signals_ignored = strtol(signals_ignored, NULL, 16);
+    process->psig->signals_ignored = strtol(signals_ignored, NULL, 16);
 }
 
 void get_signals_caught(profile_t *process)
 {
+    // return error no
+    if (!process || !process->psig)
+        return;
+
     char *signals_caught = parse_status_fields(process->pidstr, "SigCgt", 
                                                isalnum);
 
     if (!signals_caught) return;
-    process->signals_caught = strtol(signals_caught, NULL, 16);
+    process->psig->signals_caught = strtol(signals_caught, NULL, 16);
 }
 
 void pid_name(profile_t *process)
@@ -508,6 +527,19 @@ void process_sid(profile_t *process)
 
 void rlim_stat(profile_t *process, int resource, unsigned long *lim)
 {
+    // return error value
+    if (!process)
+        return;
+
+    // return error value
+    if (!process->prlim) {
+        process->prlim = malloc(sizeof *process->prlim);
+        if (!process->prlim)
+            return;
+    }
+
+    struct proc_rlim *prlim = process->prlim;
+
     struct rlimit limits;
     prlimit(process->pid, resource, NULL, &limits);
 
@@ -518,64 +550,64 @@ void rlim_stat(profile_t *process, int resource, unsigned long *lim)
 
     switch (resource) {
         case(RLIMIT_AS): 
-            process->addr_space_cur = limits.rlim_cur;
-            process->addr_space_max = limits.rlim_max;
+            prlim->addr_space_cur = limits.rlim_cur;
+            prlim->addr_space_max = limits.rlim_max;
             break;
         case(RLIMIT_CORE):
-            process->core_cur = limits.rlim_cur;
-            process->core_max = limits.rlim_max;
+            prlim->core_cur = limits.rlim_cur;
+            prlim->core_max = limits.rlim_max;
             break;
         case(RLIMIT_CPU):
-            process->cpu_cur = limits.rlim_cur;
-            process->cpu_max = limits.rlim_max;
+            prlim->cpu_cur = limits.rlim_cur;
+            prlim->cpu_max = limits.rlim_max;
             break;
         case(RLIMIT_DATA):
-            process->data_cur = limits.rlim_cur;
-            process->data_max = limits.rlim_max;
+            prlim->data_cur = limits.rlim_cur;
+            prlim->data_max = limits.rlim_max;
             break;
         case(RLIMIT_FSIZE):
-            process->fsize_cur = limits.rlim_cur;
-            process->fsize_max = limits.rlim_max;
+            prlim->fsize_cur = limits.rlim_cur;
+            prlim->fsize_max = limits.rlim_max;
             break;
         case(RLIMIT_LOCKS):
-            process->locks_cur = limits.rlim_cur;
-            process->locks_max = limits.rlim_max;
+            prlim->locks_cur = limits.rlim_cur;
+            prlim->locks_max = limits.rlim_max;
             break;
         case(RLIMIT_MEMLOCK):
-            process->memlock_cur = limits.rlim_cur;
-            process->memlock_max = limits.rlim_max;
+            prlim->memlock_cur = limits.rlim_cur;
+            prlim->memlock_max = limits.rlim_max;
             break;
         case(RLIMIT_MSGQUEUE):
-            process->msgqueue_cur = limits.rlim_cur;
-            process->msgqueue_max = limits.rlim_max;
+            prlim->msgqueue_cur = limits.rlim_cur;
+            prlim->msgqueue_max = limits.rlim_max;
             break;
         case(RLIMIT_NICE):
-            process->nice_cur = limits.rlim_cur;
-            process->nice_max = limits.rlim_max;
+            prlim->nice_cur = limits.rlim_cur;
+            prlim->nice_max = limits.rlim_max;
             break;
         case(RLIMIT_NOFILE):
-            process->nofile_cur = limits.rlim_cur;
-            process->nofile_max = limits.rlim_max;
+            prlim->nofile_cur = limits.rlim_cur;
+            prlim->nofile_max = limits.rlim_max;
             break;
         case(RLIMIT_NPROC):
-            process->nproc_cur = limits.rlim_cur;
-            process->nproc_max = limits.rlim_max;
+            prlim->nproc_cur = limits.rlim_cur;
+            prlim->nproc_max = limits.rlim_max;
             break;
         case(RLIMIT_RSS):
-            process->rss_cur = limits.rlim_cur;
-            process->rss_max = limits.rlim_max;
+            prlim->rss_cur = limits.rlim_cur;
+            prlim->rss_max = limits.rlim_max;
             break;
         case(RLIMIT_RTPRIO):
-            process->rtprio_cur = limits.rlim_cur;
-            process->rtprio_max = limits.rlim_max;
+            prlim->rtprio_cur = limits.rlim_cur;
+            prlim->rtprio_max = limits.rlim_max;
             break;
         case(RLIMIT_SIGPENDING):
-            process->sigpending_cur = limits.rlim_cur;
-            process->sigpending_max = limits.rlim_max;
+            prlim->sigpending_cur = limits.rlim_cur;
+            prlim->sigpending_max = limits.rlim_max;
             break;
         case(RLIMIT_STACK):
-            process->stack_cur = limits.rlim_cur;
-            process->stack_max = limits.rlim_max;
+            prlim->stack_cur = limits.rlim_cur;
+            prlim->stack_max = limits.rlim_max;
             break;
     }        
 }
@@ -734,6 +766,8 @@ profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
     profile->pidstr = malloc(MAXPID);
+    profile->prlim = malloc(sizeof *profile->prlim);
+    profile->psig = malloc(sizeof *profile->psig);
     snprintf(profile->pidstr, MAXPID - 1, "%d", pid);
 
     if (!is_alive(profile))
@@ -788,6 +822,12 @@ void free_profile(profile_t *process)
 
     if (process->ioprio)
         free(process->ioprio);
+
+    if (process->prlim)
+        free(process->prlim);
+
+    if (process->psig)
+        free(process->psig);
 
     if (process->fd)
         free_profile_fd(process);

@@ -65,11 +65,6 @@ struct profile {
     int cpu_affinity;
     int thread_count;
     int threads[256];
-    int signals_pending;
-    long signal_pending_mask;
-    long signals_blocked;
-    long signals_ignored;
-    long signals_caught;
     long vol_ctxt_swt;
     long invol_ctxt_swt;
     long vmem;
@@ -80,6 +75,21 @@ struct profile {
     pid_t sid;
     int nice;
     int nice_err;
+    struct proc_rlim *prlim;
+    struct proc_signal *psig;
+    long long start_time;
+    fdstats_t *fd;
+};
+
+struct proc_signal {
+    int signals_pending;
+    long signal_pending_mask;
+    long signals_blocked;
+    long signals_ignored;
+    long signals_caught;
+}__attribute__((packed));
+
+struct proc_rlim {
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
     rlim_t core_cur;
@@ -112,9 +122,7 @@ struct profile {
     rlim_t sigpending_max;
     rlim_t stack_cur;
     rlim_t stack_max;
-    long long start_time;
-    fdstats_t *fd;
-};
+}__attribute__((packed));
 
 // Check if process exists.
 bool is_alive(profile_t *process);
