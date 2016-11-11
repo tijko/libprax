@@ -73,31 +73,31 @@ free_path:
     return value;
 }
 
-bool yama_enabled(void)
+int yama_enabled(void)
 {
     char *yama = "/proc/sys/kernel/yama/ptrace_scope";
 
     FILE *fh = fopen(yama, "r");
 
     if (!fh)
-        return false;
+        return 0;
 
     char yama_byte;
 
     if (fread(&yama_byte, 1, 1, fh) < 0)
-        return false;
+        return 0;
 
-    return yama_byte == '1' ? true : false;
+    return yama_byte == '1';
 }
 // Add checks on returns
-bool is_traced(profile_t *process)
+int is_traced(profile_t *process)
 {
     char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid",
                                               isdigit);
 
     int tracer_pid = atoi(tracer_pidstr);
 
-    return tracer_pid ? true : false;
+    return tracer_pid ? 1 : 0;
 }
 
 void get_trace_pid(profile_t *process)

@@ -53,18 +53,7 @@ typedef struct profile profile_t;
  */
 
 struct profile {
-    bool yama_enabled;
-    bool is_traced;
-    pid_t trace_pid;
-    int pid;
-    int uid;
-    int tgid;
-    int ctty;
-    int nl_conn;
-    int nl_family_id;
-    int cpu_affinity;
-    int thread_count;
-    int threads[256];
+    long long start_time;
     long vol_ctxt_swt;
     long invol_ctxt_swt;
     long vmem;
@@ -72,22 +61,33 @@ struct profile {
     char *name;
     char *username;
     char *ioprio;
-    pid_t sid;
-    int nice;
-    int nice_err;
     struct proc_rlim *prlim;
     struct proc_signal *psig;
-    long long start_time;
     fdstats_t *fd;
+    pid_t trace_pid;
+    int pid;
+    int uid;
+    int tgid;
+    int ctty;
+    int nl_conn;
+    int nl_family_id;
+    int thread_count;
+    int threads[256];
+    int nice;
+    int nice_err;
+    pid_t sid;
+    int cpu_affinity:30;
+    int yama_enabled:1;
+    int is_traced:1;
 };
 
 struct proc_signal {
-    int signals_pending;
     long signal_pending_mask;
     long signals_blocked;
     long signals_ignored;
     long signals_caught;
-}__attribute__((packed));
+    int signals_pending;
+};
 
 struct proc_rlim {
     rlim_t addr_space_cur;
@@ -122,7 +122,7 @@ struct proc_rlim {
     rlim_t sigpending_max;
     rlim_t stack_cur;
     rlim_t stack_max;
-}__attribute__((packed));
+};
 
 // Check if process exists.
 bool is_alive(profile_t *process);
@@ -227,10 +227,10 @@ void free_profile_fd(profile_t *process);
 void free_profile(profile_t *process);
 
 // Checks if the yama security is enabled
-bool yama_enabled(void);
+int yama_enabled(void);
 
 // Check if the process is being traced
-bool is_traced(profile_t *process);
+int is_traced(profile_t *process);
 
 // Gets the current tracer's pid
 void get_trace_pid(profile_t *process);
