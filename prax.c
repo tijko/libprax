@@ -22,7 +22,7 @@ bool is_alive(profile_t *process)
 {
     char proc_dir_path[PATH_MAX + 1];
 
-    snprintf(proc_dir_path, PATH_MAX, "%s%s", PROC, process->pidstr);
+    snprintf(proc_dir_path, PATH_MAX, "%s%d", PROC, process->pid);
     DIR *proc_dir_handle = opendir(proc_dir_path);
     bool alive = proc_dir_handle ? true : false;
 
@@ -32,10 +32,10 @@ bool is_alive(profile_t *process)
     return alive;
 }
 
-static char *parse_status_fields(char *pid, char *field, int (*accept_char)(int c))
+static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int c))
 {
     char *path;    
-    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, pid, STATUS);
+    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, pid, STATUS);
 
     FILE *fp = fopen(path, "r");
     if (fp == NULL) 
@@ -92,7 +92,7 @@ int yama_enabled(void)
 // Add checks on returns
 int is_traced(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid",
+    char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
                                               isdigit);
 
     int tracer_pid = atoi(tracer_pidstr);
@@ -102,7 +102,7 @@ int is_traced(profile_t *process)
 
 void get_trace_pid(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pidstr, "TracerPid",
+    char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
                                               isdigit);
     process->trace_pid = atoi(tracer_pidstr);
 }
@@ -243,11 +243,12 @@ void get_pending_signals(profile_t *process)
     // return error no
     if (!process || !process->psig)
         return;
-    char *signals_pending = parse_status_fields(process->pidstr, "SigQ", 
+    char *signals_pending = parse_status_fields(process->pid, "SigQ", 
                                                 isdigit);
 
     if (!signals_pending) return;
     process->psig->signals_pending = atoi(signals_pending);
+    free(signals_pending);
 }
 
 void get_pending_signals_mask(profile_t *process)
@@ -256,11 +257,12 @@ void get_pending_signals_mask(profile_t *process)
     if (!process || !process->psig)
         return;
 
-   char *pending_signals = parse_status_fields(process->pidstr, "SigPnd", 
+   char *pending_signals = parse_status_fields(process->pid, "SigPnd", 
                                                isalnum);
 
     if (!pending_signals) return;
     process->psig->signal_pending_mask = strtol(pending_signals, NULL, 16);
+    free(pending_signals);
 }
 
 void get_signals_blocked(profile_t *process)
@@ -269,11 +271,12 @@ void get_signals_blocked(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_blocked = parse_status_fields(process->pidstr, "SigBlk", 
+    char *signals_blocked = parse_status_fields(process->pid, "SigBlk", 
                                                 isalnum);
 
     if (!signals_blocked) return;
     process->psig->signals_blocked = strtol(signals_blocked, NULL, 16);
+    free(signals_blocked);
 }
 
 void get_signals_ignored(profile_t *process)
@@ -282,11 +285,12 @@ void get_signals_ignored(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_ignored = parse_status_fields(process->pidstr, "SigIgn", 
+    char *signals_ignored = parse_status_fields(process->pid, "SigIgn", 
                                                 isalnum);
 
     if (!signals_ignored) return;
     process->psig->signals_ignored = strtol(signals_ignored, NULL, 16);
+    free(signals_ignored);
 }
 
 void get_signals_caught(profile_t *process)
@@ -295,11 +299,12 @@ void get_signals_caught(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_caught = parse_status_fields(process->pidstr, "SigCgt", 
+    char *signals_caught = parse_status_fields(process->pid, "SigCgt", 
                                                isalnum);
 
     if (!signals_caught) return;
     process->psig->signals_caught = strtol(signals_caught, NULL, 16);
+    free(signals_caught);
 }
 
 void pid_name(profile_t *process)
@@ -322,7 +327,7 @@ void pid_name(profile_t *process)
         goto assign_name;
 
     char *path;
-    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, COMM);
+    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, COMM);
     FILE *proc = fopen(path, "r");
 
     if (proc == NULL) 
@@ -373,7 +378,7 @@ int process_fd_stats(profile_t *process)
     struct dirent *files;
 
     char *fdpath;
-    CONSTRUCT_PATH(fdpath, "%s%s%s", 3, PROC, process->pidstr, FD);
+    CONSTRUCT_PATH(fdpath, "%s%d%s", 3, PROC, process->pid, FD);
 
     DIR *fd_dir = opendir(fdpath);
 
@@ -617,7 +622,7 @@ void running_threads(profile_t *process)
     struct dirent *task;
     
     char *path;
-    CONSTRUCT_PATH(path, "%s%s%s", 3, PROC, process->pidstr, TASK);
+    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, TASK);
 
     DIR *task_dir = opendir(path);
     if (task_dir == NULL)
@@ -643,12 +648,12 @@ void tkill(profile_t *process, int tid)
         printf("Thread kill failed :: id - %d\n", tid);
 }
 
-static char *parse_stat(char *pid, int field)
+static char *parse_stat(pid_t pid, int field)
 {
     char *fieldstr = NULL;
     
     char path[PATH_MAX + 1];
-    snprintf(path, PATH_MAX, "%s%s/stat", PROC, pid);
+    snprintf(path, PATH_MAX, "%s%d/stat", PROC, pid);
 
     FILE *fh = fopen(path, "r");
     if (!fh) 
@@ -694,7 +699,7 @@ void voluntary_context_switches(profile_t *process)
         return;
     }
 
-    char *vswitch = parse_status_fields(process->pidstr, 
+    char *vswitch = parse_status_fields(process->pid, 
                                "voluntary_ctxt_switches", isdigit);
     if (vswitch) { 
         process->vol_ctxt_swt = atol(vswitch);
@@ -717,7 +722,7 @@ void involuntary_context_switches(profile_t *process)
     }
 
     char *invol_switch = "nonvoluntary_ctxt_switches";
-    char *ivswitch = parse_status_fields(process->pidstr, invol_switch, 
+    char *ivswitch = parse_status_fields(process->pid, invol_switch, 
                                          isdigit);
     if (ivswitch) {
         process->invol_ctxt_swt = atol(ivswitch);
@@ -736,7 +741,7 @@ void get_start_time(profile_t *process)
             process->start_time = -1;
     }
 
-    char *start = parse_stat(process->pidstr, 22);
+    char *start = parse_stat(process->pid, 22);
     process->start_time = strtol(start, NULL, 0);
 }
 
@@ -754,7 +759,7 @@ void virtual_mem(profile_t *process)
     }
 
     char *virtual_memory = "VmSize";
-    char *total_memory = parse_status_fields(process->pidstr, virtual_memory, 
+    char *total_memory = parse_status_fields(process->pid, virtual_memory, 
                                              isdigit);
     if (total_memory) {
         process->vmem = atol(total_memory);
@@ -765,16 +770,13 @@ void virtual_mem(profile_t *process)
 profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
-    profile->pidstr = malloc(MAXPID);
+    profile->pid = pid;
     profile->prlim = malloc(sizeof *profile->prlim);
     profile->psig = malloc(sizeof *profile->psig);
-    snprintf(profile->pidstr, MAXPID - 1, "%d", pid);
 
     if (!is_alive(profile))
         goto profile_error;
  
-    profile->pid = pid;
-
     uid_t user = geteuid();
 
     if (user == 0) {
@@ -788,7 +790,6 @@ profile_t *init_profile(int pid)
 
 profile_error:
 
-    free(profile->pidstr);
     free(profile);
 
     return NULL;
@@ -813,9 +814,6 @@ void free_profile(profile_t *process)
 
     if (process->nl_conn != -1)
         close(process->nl_conn);
-
-    if (process->pidstr)
-        free(process->pidstr);
 
     if (process->name)
         free(process->name);
