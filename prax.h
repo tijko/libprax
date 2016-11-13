@@ -19,6 +19,7 @@
 #define MAX_MSG 1024
 
 #include <unistd.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
@@ -53,11 +54,10 @@ typedef struct profile profile_t;
  */
 
 struct profile {
-    long long start_time;
-    long vol_ctxt_swt;
-    long invol_ctxt_swt;
-    long vmem;
-    char *pidstr;
+    uint32_t start_time;
+    uint64_t vol_ctxt_swt;
+    uint64_t invol_ctxt_swt;
+    uint64_t vmem;
     char *name;
     char *username;
     char *ioprio;
@@ -65,8 +65,8 @@ struct profile {
     struct proc_signal *psig;
     fdstats_t *fd;
     pid_t trace_pid;
-    int pid;
-    int uid;
+    pid_t pid;
+    uid_t uid;
     int tgid;
     int ctty;
     int nl_conn;
