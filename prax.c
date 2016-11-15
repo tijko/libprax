@@ -179,8 +179,8 @@ static int recv_nl_req(int conn, struct taskmsg *msg)
 
 static void *make_nl_req(int req, profile_t *process)
 {
-    struct taskmsg msg;
-    memset(&msg, 0, sizeof msg);
+    struct taskmsg *msg = calloc(1, sizeof *msg);
+    void *task_ret = NULL;
 
     int data_len;
 
@@ -188,11 +188,11 @@ static void *make_nl_req(int req, profile_t *process)
 
         case (CTRL_CMD_GETFAMILY):
             data_len = strlen(TASKSTATS_GENL_NAME) + 1;
-            build_req(&msg, GENL_ID_CTRL, req, CTRL_ATTR_FAMILY_NAME,
+            build_req(msg, GENL_ID_CTRL, req, CTRL_ATTR_FAMILY_NAME,
                        data_len, TASKSTATS_GENL_NAME);
             break;
         case (TASKSTATS_CMD_GET):
-            build_req(&msg, process->nl_family_id, req,
+            build_req(msg, process->nl_family_id, req,
                 TASKSTATS_CMD_ATTR_PID, sizeof(int), &(process->pid));
             break;
 
@@ -201,29 +201,41 @@ static void *make_nl_req(int req, profile_t *process)
     struct sockaddr_nl addr;
     memset(&addr, 0, sizeof addr);
     addr.nl_family = AF_NETLINK;
-
-    int msglength = msg.nl.nlmsg_len;
-    char *msg_buffer = (char *) &msg;
+    
+    int msglength = msg->nl.nlmsg_len;
+    char *msg_buffer = (char *) msg;
 
     while (msglength > 0) {
         int bytes_sent = sendto(process->nl_conn, msg_buffer, msglength, 0,
                             (struct sockaddr *) &addr, sizeof addr);
         if (bytes_sent < 0)
-            return NULL;
+            goto release;
         msglength -= bytes_sent;
         msg_buffer += bytes_sent;
     }
+    
+    memset(msg, 0, sizeof *msg);
+    
+    if (recv_nl_req(process->nl_conn, msg) < 0)
+        goto release;
 
-    memset(&msg, 0, sizeof msg);
-    if (recv_nl_req(process->nl_conn, &msg) < 0)
-        return NULL;
 
-    void *task_ret = NULL;
+    if (req == TASKSTATS_CMD_GET) {
+        void *parse_results = parse_taskmsg(TASKSTATS_TYPE_STATS, msg);
+        if (parse_results) {
+            task_ret = malloc(sizeof(struct taskstats));
+            memcpy(task_ret, parse_results, sizeof(struct taskstats));
+        }
+    } else if (req == CTRL_CMD_GETFAMILY) {
+        void *parse_results = parse_taskmsg(CTRL_ATTR_FAMILY_ID, msg);
+        if (parse_results) {
+            task_ret = malloc(sizeof(int));
+            memcpy(task_ret, parse_results, sizeof(int));
+        }
+    }
 
-    if (req == TASKSTATS_CMD_GET)
-        task_ret = parse_taskmsg(TASKSTATS_TYPE_STATS, &msg);
-    else if (req == CTRL_CMD_GETFAMILY)
-        task_ret = parse_taskmsg(CTRL_ATTR_FAMILY_ID, &msg);
+release:
+    free(msg);
 
     return task_ret;
 }
@@ -232,8 +244,11 @@ static int get_nl_family_id(profile_t *process)
 {
     void *family_id = make_nl_req(CTRL_CMD_GETFAMILY, process);
 
-    if (family_id)
-        return *(int *) family_id;
+    if (family_id) {
+        int id = *(int *) family_id;
+        free(family_id);
+        return id;
+    }
 
     return -1;
 }
@@ -313,9 +328,10 @@ void pid_name(profile_t *process)
 
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                 TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->name = strdup(st->ac_comm);
-        else
+            free(st);
+        } else
             process->name = NULL;
 
         return;
@@ -424,9 +440,10 @@ void get_process_nice(profile_t *process)
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                 TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->nice = st->ac_nice;
-        else
+            free(st);
+        } else
             process->nice_err = -1;
 
         return;
@@ -691,9 +708,10 @@ void voluntary_context_switches(profile_t *process)
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                       TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->vol_ctxt_swt = st->nvcsw;
-        else
+            free(st);
+        } else
             process->vol_ctxt_swt = -1;
 
         return;
@@ -713,9 +731,10 @@ void involuntary_context_switches(profile_t *process)
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                       TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->invol_ctxt_swt = st->nivcsw;
-        else
+            free(st);
+        } else
             process->invol_ctxt_swt = -1;
 
         return;
@@ -735,9 +754,10 @@ void get_start_time(profile_t *process)
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                       TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->start_time = st->ac_btime;
-        else
+            free(st);
+        } else
             process->start_time = -1;
     }
 
@@ -750,9 +770,10 @@ void virtual_mem(profile_t *process)
     if (process->uid == 0) {
         struct taskstats *st = (struct taskstats *) make_nl_req(
                                       TASKSTATS_CMD_GET, process);
-        if (st)
+        if (st) {
             process->vmem = st->virtmem;
-        else
+            free(st);
+        } else
             process->vmem = -1;
 
         return;
