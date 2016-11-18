@@ -11,7 +11,6 @@
 #define TGKILL 270
 #endif
 
-#define MAXPID 16
 #define IOPRIO_SIZE 6 
 #define STATUS_SIZE 1024
 #define MAX_FIELD 32
@@ -138,7 +137,7 @@ void set_pid_nice(profile_t *process, int priority);
 
 #define PROC "/proc/"
 #define PROCLEN 6
-
+#define YAMA "/proc/sys/kernel/yama/ptrace_scope"
 #define STATUS "/status"
 #define COMM "/comm"
 #define TASK "/task"

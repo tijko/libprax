@@ -24,12 +24,13 @@ bool is_alive(profile_t *process)
 
     snprintf(proc_dir_path, PATH_MAX, "%s%d", PROC, process->pid);
     DIR *proc_dir_handle = opendir(proc_dir_path);
-    bool alive = proc_dir_handle ? true : false;
 
-    if (alive)
+    if (proc_dir_handle) {
         closedir(proc_dir_handle);
+        return true;
+    }
 
-    return alive;
+    return false;
 }
 
 static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int c))
@@ -38,7 +39,7 @@ static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int 
     CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, pid, STATUS);
 
     FILE *fp = fopen(path, "r");
-    if (fp == NULL) 
+    if (!fp)
         goto free_path;
 
     char status[STATUS_SIZE];
@@ -75,9 +76,7 @@ free_path:
 
 int yama_enabled(void)
 {
-    char *yama = "/proc/sys/kernel/yama/ptrace_scope";
-
-    FILE *fh = fopen(yama, "r");
+    FILE *fh = fopen(YAMA, "r");
 
     if (!fh)
         return 0;
@@ -89,22 +88,27 @@ int yama_enabled(void)
 
     return yama_byte == '1';
 }
-// Add checks on returns
+
 int is_traced(profile_t *process)
 {
     char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
-                                              isdigit);
+                                                               isdigit);
+    if (!tracer_pidstr)
+        return 0;
 
-    int tracer_pid = atoi(tracer_pidstr);
-
-    return tracer_pid ? 1 : 0;
+    errno = 0;
+    strtol(tracer_pidstr, NULL, 0);
+    return errno ? 0 : 1;
 }
 
 void get_trace_pid(profile_t *process)
 {
     char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
-                                              isdigit);
-    process->trace_pid = atoi(tracer_pidstr);
+                                                               isdigit);
+    errno = 0;
+    process->trace_pid = strtol(tracer_pidstr, NULL, 0);
+    if (errno)
+        process->trace_pid = 0;
 }
 
 static void *parse_taskmsg(int req, struct taskmsg *msg)
