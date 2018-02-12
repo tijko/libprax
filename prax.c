@@ -111,7 +111,7 @@ void get_trace_pid(profile_t *process)
         process->trace_pid = 0;
 }
 
-static void *parse_taskmsg(int req, struct taskmsg *msg)
+void *parse_taskmsg(int req, struct taskmsg *msg)
 {
     int msglength = msg->nl.nlmsg_len;
 
@@ -199,7 +199,6 @@ static void *make_nl_req(int req, profile_t *process)
             build_req(msg, process->nl_family_id, req,
                 TASKSTATS_CMD_ATTR_PID, sizeof(int), &(process->pid));
             break;
-
     }
 
     struct sockaddr_nl addr;

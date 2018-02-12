@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -c -g -fPIC -Wall
-LDFLAGS = -shared
+LDFLAGS = -shared -Xlinker -soname=libprax.so
 HEADER = prax.h
 
 .PHONY:
