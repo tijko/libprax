@@ -124,15 +124,19 @@ struct proc_rlim {
 };
 
 // Check if process exists.
+__attribute__(( visibility("default") ))
 bool is_alive(profile_t *process);
 
 // Count digit places in type int of the process being profiled.
+__attribute__(( visibility("default") ))
 int pid_digit_places(int pid);
 
 // Function returns the niceness of the pid being profiled.
+__attribute__(( visibility("default") ))
 void get_process_nice(profile_t *process);
 
 // Sets the niceness of pid.
+__attribute__(( visibility("default") ))
 void set_pid_nice(profile_t *process, int priority);
 
 #define PROC "/proc/"
@@ -144,10 +148,12 @@ void set_pid_nice(profile_t *process, int priority);
 #define FD "/fd/"
 
 // Function to return the name of a pid.
+__attribute__(( visibility("default") ))
 void pid_name(profile_t *process);
 
 // A function that traverses the "fd" directory of the pid from process
 // and loads a fdstat_t struct with stats for each file-descriptor found.
+__attribute__(( visibility("default") ))
 int process_fd_stats(profile_t *process);
 
 //XXX These definitions are from linux/ioprio.h
@@ -170,44 +176,58 @@ enum {
 #define IOPRIO_LEN(class) strlen(class) + IOPRIO_SIZE
 
 // Returns the I/O scheduling class and priority of profiled pid.
+__attribute__(( visibility("default") ))
 void get_ioprio(profile_t *process);
 
 // Sets the I/O scheduling class and priority of profiled pid.
+__attribute__(( visibility("default") ))
 void set_ioprio(profile_t *process, int class, int value);
 
 // sets/gets process resource limits.
+__attribute__(( visibility("default") ))
 void rlim_stat(profile_t *process, int resource, unsigned long *limit);
 
 // gets/sets the current processor affinity in profile_t struct;
+__attribute__(( visibility("default") ))
 void cpu_affinity(profile_t *process);
 
+__attribute__(( visibility("default") ))
 void setcpu_affinity(profile_t *process, int affinity);
 
 // sets the session id field in profile_t struct
+__attribute__(( visibility("default") ))
 void process_sid(profile_t *process);
 
 // populates the 'threads' array in process struct if any threads are running.
+__attribute__(( visibility("default") ))
 void running_threads(profile_t *process);
 
 // kills a thread under the current processes group with the provided id.
+__attribute__(( visibility("default") ))
 void tkill(profile_t *process, int tid);
 
 // sets the 'tgid' field of the processes thread group id number.
+__attribute__(( visibility("default") ))
 void gettgid(profile_t *process);
 
 // sets the 'uid' field of the processes uid number.
+__attribute__(( visibility("default") ))
 void getpuid(profile_t *process);
 
 // sets the 'username' field of process provided.
+__attribute__(( visibility("default") ))
 void getusernam(profile_t *process);
 
 // will find the number voluntary context switches for a process.
+__attribute__(( visibility("default") ))
 void voluntary_context_switches(profile_t *process);
 
 // will find the number involuntary context switches for a process.
+__attribute__(( visibility("default") ))
 void involuntary_context_switches(profile_t *process);
 
 // specifies the amount of virtual memory in use by a process.
+__attribute__(( visibility("default") ))
 void virtual_mem(profile_t *process);
     
 #define MAXVAL 64
@@ -217,37 +237,49 @@ void virtual_mem(profile_t *process);
 #define NLA_DATA(nla) (void *) ((char *) nla + NLA_HDRLEN)
 
 // Initializer for the profile_t type.
+__attribute__(( visibility("default") ))
 profile_t *init_profile(int pid);
 
 // Free memory used by a profile_t type file descriptors field.
+__attribute__(( visibility("default") ))
 void free_profile_fd(profile_t *process);
 
 // Free memory used by a profile_t type.
+__attribute__(( visibility("default") ))
 void free_profile(profile_t *process);
 
 // Checks if the yama security is enabled
+__attribute__(( visibility("default") ))
 int yama_enabled(void);
 
 // Check if the process is being traced
+__attribute__(( visibility("default") ))
 int is_traced(profile_t *process);
 
 // Gets the current tracer's pid
+__attribute__(( visibility("default") ))
 void get_trace_pid(profile_t *process);
 
 // Gets the number of pending signals for the process
+__attribute__(( visibility("default") ))
 void get_pending_signals(profile_t *process);
 
 // Gets the mask of the currently queued signals for the process
+__attribute__(( visibility("default") ))
 void get_pending_signals_mask(profile_t *process);
 
 // Gets the blocked signals for the process
+__attribute__(( visibility("default") ))
 void get_signals_blocked(profile_t *process);
 
 // Gets the signals ignored for the process
+__attribute__(( visibility("default") ))
 void get_signals_ignored(profile_t *process);
 
 // Gets the signals caught for the process
+__attribute__(( visibility("default") ))
 void get_signals_caught(profile_t *process);
 
 // Gets the start time for the process
+__attribute__(( visibility("default") ))
 void get_start_time(profile_t *process);

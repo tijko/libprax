@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -c -g -fPIC -Wall
+CFLAGS = -c -g -fPIC -fvisibility=hidden -Wall
 LDFLAGS = -shared -Xlinker -soname=libprax.so
 HEADER = prax.h
 
