@@ -59,7 +59,7 @@ struct profile {
     uint64_t vmem;
     char *name;
     char *username;
-    char *ioprio;
+    char ioprio[16];
     struct proc_rlim *prlim;
     struct proc_signal *psig;
     fdstats_t *fd;
@@ -67,11 +67,15 @@ struct profile {
     pid_t pid;
     uid_t uid;
     int tgid;
+    // a max here?
     int ctty;
+    // relatively low
     int nl_conn;
+    // a low here?
     int nl_family_id;
     int thread_count;
     int threads[256];
+    // bitfield
     int nice;
     int nice_err;
     pid_t sid;
@@ -89,6 +93,8 @@ struct proc_signal {
 };
 
 struct proc_rlim {
+    // grok -- a union here?
+    // if tracking all the fields in prlimit...
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
     rlim_t core_cur;

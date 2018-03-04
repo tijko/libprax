@@ -53,7 +53,7 @@ static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int 
     while (field_token) {
         if (strstr(field_token, field)) {
             char *value_raw = strchr(field_token, '\t');
-            for (; !isdigit(*value_raw); value_raw++);
+            for (; isblank(*value_raw); value_raw++);
             value = malloc(MAX_FIELD);
             int idx = 0;
             for (; idx < MAX_FIELD - 1 && accept_char(value_raw[idx]); idx++)
@@ -223,6 +223,7 @@ static void *make_nl_req(int req, profile_t *process)
         goto release;
 
 
+    // rm copy dup
     if (req == TASKSTATS_CMD_GET) {
         void *parse_results = parse_taskmsg(TASKSTATS_TYPE_STATS, msg);
         if (parse_results) {
@@ -477,30 +478,24 @@ static void get_ioprio_nice(profile_t *process, int ioprio)
     int prio = sched_getscheduler(process->pid);
 
     if (prio == SCHED_FIFO || prio == SCHED_RR) {        
-        process->ioprio = malloc(IOPRIO_LEN(class[1]));
         snprintf(process->ioprio, IOPRIO_LEN(class[1]), 
                  "%s%d", class[1], ioprio_level);
     } else if (prio == SCHED_OTHER) {
-        process->ioprio = malloc(IOPRIO_LEN(class[2]));
         snprintf(process->ioprio, IOPRIO_LEN(class[2]), 
                  "%s%d", class[2], ioprio_level);
     } else {
-        process->ioprio = malloc(strlen(class[3]) + 1);
         snprintf(process->ioprio, IOPRIO_LEN(class[3]), "%s", class[3]);
     }
 }
 
 void get_ioprio(profile_t *process)
 {
-    process->ioprio= NULL;
-
     int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
 
     if (ioprio == -1)
         return;
 
     if (IOPRIO_CLASS(ioprio) != 0) {
-        process->ioprio = malloc(IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]));
         snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
                  "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
     } else
@@ -512,9 +507,7 @@ void set_ioprio(profile_t *process, int class, int value)
     int ioprio = IOPRIO_VALUE(class, value);
     int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
                                      process->pid, ioprio);
-    if (setioprio == -1)
-        process->ioprio = NULL;
-    else
+    if (setioprio != -1)
         get_ioprio(process);
 }
 
@@ -550,6 +543,7 @@ void process_sid(profile_t *process)
     process->sid = sid;
 }
 
+// Having an api call returning void with no error signalling??
 void rlim_stat(profile_t *process, int resource, unsigned long *lim)
 {
     // return error value
@@ -641,6 +635,7 @@ void running_threads(profile_t *process)
 {
     struct dirent *task;
     
+    // how many times is the /proc/$PID constructed?
     char *path;
     CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, TASK);
 
@@ -648,6 +643,7 @@ void running_threads(profile_t *process)
     if (task_dir == NULL)
         goto count;
    
+    // This isn't caught by the compiler??
     int thread_cnt = 0;
     while ((task = readdir(task_dir))) {
         if (!(ispunct(*(task->d_name)))) 
@@ -689,6 +685,7 @@ static char *parse_stat(pid_t pid, int field)
     if (!fieldstr || field == 0)
         goto free_line;
 
+    // how expensive is strtok vs. say 1 scanf
     for (int fieldno=0; fieldstr && fieldno < field; fieldno++)
         fieldstr = strtok(NULL, delim);
 
@@ -764,6 +761,7 @@ void get_start_time(profile_t *process)
             process->start_time = -1;
     }
 
+    // Magic number?
     char *start = parse_stat(process->pid, 22);
     process->start_time = strtol(start, NULL, 0);
 }
@@ -782,6 +780,7 @@ void virtual_mem(profile_t *process)
         return;
     }
 
+    // local static?
     char *virtual_memory = "VmSize";
     char *total_memory = parse_status_fields(process->pid, virtual_memory, 
                                              isdigit);
@@ -841,9 +840,6 @@ void free_profile(profile_t *process)
 
     if (process->name)
         free(process->name);
-
-    if (process->ioprio)
-        free(process->ioprio);
 
     if (process->prlim)
         free(process->prlim);
