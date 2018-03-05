@@ -20,10 +20,7 @@
 
 bool is_alive(profile_t *process)
 {
-    char proc_dir_path[PATH_MAX + 1];
-
-    snprintf(proc_dir_path, PATH_MAX, "%s%d", PROC, process->pid);
-    DIR *proc_dir_handle = opendir(proc_dir_path);
+    DIR *proc_dir_handle = opendir(process->procfs_base);
 
     if (proc_dir_handle) {
         closedir(proc_dir_handle);
@@ -346,6 +343,7 @@ void pid_name(profile_t *process)
     if (!is_alive(process)) 
         goto assign_name;
 
+    // XXX path
     char *path;
     CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, COMM);
     FILE *proc = fopen(path, "r");
@@ -397,6 +395,7 @@ int process_fd_stats(profile_t *process)
 {
     struct dirent *files;
 
+    // XXX path
     char *fdpath;
     CONSTRUCT_PATH(fdpath, "%s%d%s", 3, PROC, process->pid, FD);
 
@@ -411,6 +410,7 @@ int process_fd_stats(profile_t *process)
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
+            // XXX path
             char *path;
             CONSTRUCT_PATH(path, "%s%s", 2, fdpath, files->d_name);
 
@@ -635,7 +635,7 @@ void running_threads(profile_t *process)
 {
     struct dirent *task;
     
-    // how many times is the /proc/$PID constructed?
+    // XXX path
     char *path;
     CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, TASK);
 
@@ -793,7 +793,17 @@ void virtual_mem(profile_t *process)
 profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
+    if (!profile)
+        return NULL;
+
     profile->pid = pid;
+    if ((profile->procfs_len = snprintf(profile->procfs_base, PROCFS_MAX,
+                                                 "/proc/%d/", pid)) < 0) {
+        free(profile);
+        return NULL;
+    } 
+        
+    
     profile->prlim = malloc(sizeof *profile->prlim);
     profile->psig = malloc(sizeof *profile->psig);
 
