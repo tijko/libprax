@@ -30,6 +30,16 @@ bool is_alive(profile_t *process)
     return false;
 }
 
+static inline void procfs_filename(char *base, char *field, size_t len)
+{
+    int field_len = strlen(field);
+
+    for (int i=0; i < field_len; i++)
+        base[len + i] = field[i];
+
+    base[len + field_len] = '\0';
+}
+
 static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int c))
 {
     char *path;    
@@ -135,7 +145,7 @@ void *parse_taskmsg(int req, struct taskmsg *msg)
 
 static int create_nl_conn(void)
 {
-    int nl_conn = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+   int nl_conn = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
 
     if (nl_conn < 0)
         return -1;
@@ -325,6 +335,7 @@ void get_signals_caught(profile_t *process)
 
 void pid_name(profile_t *process)
 {
+    // separate logic into function for taskstats...
     if (process->uid == 0) {
 
         struct taskstats *st = (struct taskstats *) make_nl_req(
@@ -340,16 +351,11 @@ void pid_name(profile_t *process)
 
     char *name = NULL;
 
-    if (!is_alive(process)) 
-        goto assign_name;
-
-    // XXX path
-    char *path;
-    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, COMM);
-    FILE *proc = fopen(path, "r");
+    procfs_filename(process->procfs_base, COMM, (int) process->procfs_len);
+    FILE *proc = fopen(process->procfs_base, "r");
 
     if (proc == NULL) 
-        goto free_path;
+        return;
 
     size_t n = 0;
 
@@ -358,10 +364,6 @@ void pid_name(profile_t *process)
 
     name[strlen(name) - 1] = '\0';
 
-free_path:
-    free(path);
-
-assign_name:
     process->name = name;
 }
 

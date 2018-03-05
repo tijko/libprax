@@ -153,7 +153,7 @@ void set_pid_nice(profile_t *process, int priority);
 #define PROCLEN 6
 #define YAMA "/proc/sys/kernel/yama/ptrace_scope"
 #define STATUS "/status"
-#define COMM "/comm"
+#define COMM "comm"
 #define TASK "/task"
 #define FD "/fd/"
 
