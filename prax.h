@@ -52,11 +52,15 @@ typedef struct profile profile_t;
  *
  */
 
+#define PROCFS_MAX 32
+
 struct profile {
     uint32_t start_time;
     uint64_t vol_ctxt_swt;
     uint64_t invol_ctxt_swt;
     uint64_t vmem;
+    char procfs_base[PROCFS_MAX + 1];
+    size_t procfs_len;
     char *name;
     char *username;
     char ioprio[16];
