@@ -381,7 +381,7 @@ static void set_fdstat(char *path, fdstats_t *fdstats)
 
 static void set_realpath(char *path, fdstats_t *fdstats)
 {
-    char realpath[PATH_MAX + 1];
+    char realpath[PATH_MAX + 1] = { '\0' };
 
     fdstats->file = NULL;
 
@@ -397,36 +397,33 @@ int process_fd_stats(profile_t *process)
 {
     struct dirent *files;
 
-    // XXX path
-    char *fdpath;
-    CONSTRUCT_PATH(fdpath, "%s%d%s", 3, PROC, process->pid, FD);
+    size_t procfs_len = process->procfs_len;
+    char *base = (char *) &(process->procfs_base);
+    procfs_filename(base, FD, procfs_len);
+    procfs_len += strlen(FD);
 
-    DIR *fd_dir = opendir(fdpath);
+    DIR *fd_dir = opendir(base);
 
     if (!fd_dir) 
         return -1;
 
-    process->fd = malloc(sizeof *(process->fd));
+    if (!(process->fd = malloc(sizeof *(process->fd))))
+        return -1;
+
     fdstats_t *curr = process->fd;
     
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
-            // XXX path
-            char *path;
-            CONSTRUCT_PATH(path, "%s%s", 2, fdpath, files->d_name);
+            procfs_filename(base, files->d_name, procfs_len);
 
-            set_fdstat(path, curr);
-            set_realpath(path, curr);
-
-            free(path);
+            set_fdstat(base, curr);
+            set_realpath(base, curr);
 
             if (!curr->file) 
                 continue;
 
-            curr->next_fd = malloc(sizeof *curr->next_fd);
-
-            if (curr->next_fd == NULL)
+            if (!(curr->next_fd = malloc(sizeof *curr->next_fd)))
                 break;
 
             curr = curr->next_fd;
@@ -435,8 +432,6 @@ int process_fd_stats(profile_t *process)
 
     if (fd_dir)
         closedir(fd_dir);
-
-    free(fdpath);
 
     return 0;
 }
@@ -820,6 +815,7 @@ profile_t *init_profile(int pid)
     } else 
         profile->nl_conn = -1;
     profile->uid = user;
+    profile->fd = NULL;
 
     return profile; 
 
@@ -832,8 +828,8 @@ profile_error:
 
 void free_profile_fd(profile_t *process)
 {
-    fdstats_t *curr;
-    fdstats_t *next;
+    fdstats_t *curr = NULL;
+    fdstats_t *next = NULL;
     
     for (curr=process->fd; curr; curr=next) {
         next = curr->next_fd;

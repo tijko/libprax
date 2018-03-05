@@ -155,7 +155,7 @@ void set_pid_nice(profile_t *process, int priority);
 #define STATUS "/status"
 #define COMM "comm"
 #define TASK "/task"
-#define FD "/fd/"
+#define FD "fd/"
 
 // Function to return the name of a pid.
 __attribute__(( visibility("default") ))
