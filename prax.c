@@ -145,7 +145,7 @@ void *parse_taskmsg(int req, struct taskmsg *msg)
 
 static int create_nl_conn(void)
 {
-   int nl_conn = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+    int nl_conn = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
 
     if (nl_conn < 0)
         return -1;
