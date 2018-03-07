@@ -40,14 +40,13 @@ static inline void procfs_filename(char *base, char *field, size_t len)
     base[len + field_len] = '\0';
 }
 
-static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int c))
+static char *parse_status_fields(profile_t *p, char *field, int (*accept_char)(int c))
 {
-    char *path;    
-    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, pid, STATUS);
+    procfs_filename(p->procfs_base, STATUS, p->procfs_len);
 
-    FILE *fp = fopen(path, "r");
+    FILE *fp = fopen(p->procfs_base, "r");
     if (!fp)
-        goto free_path;
+        return NULL;
 
     char status[STATUS_SIZE];
     if (fread(status, 1, STATUS_SIZE - 1, fp) < 0)
@@ -75,9 +74,6 @@ static char *parse_status_fields(pid_t pid, char *field, int (*accept_char)(int 
 close_path:
     fclose(fp);
 
-free_path:
-    free(path);
-
     return value;
 }
 
@@ -98,8 +94,7 @@ int yama_enabled(void)
 
 int is_traced(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
-                                                               isdigit);
+    char *tracer_pidstr = parse_status_fields(process, "TracerPid", isdigit);
     if (!tracer_pidstr)
         return 0;
 
@@ -110,8 +105,7 @@ int is_traced(profile_t *process)
 
 void get_trace_pid(profile_t *process)
 {
-    char *tracer_pidstr = parse_status_fields(process->pid, "TracerPid",
-                                                               isdigit);
+    char *tracer_pidstr = parse_status_fields(process, "TracerPid", isdigit);
     errno = 0;
     process->trace_pid = strtol(tracer_pidstr, NULL, 0);
     if (errno)
@@ -269,8 +263,7 @@ void get_pending_signals(profile_t *process)
     // return error no
     if (!process || !process->psig)
         return;
-    char *signals_pending = parse_status_fields(process->pid, "SigQ", 
-                                                isdigit);
+    char *signals_pending = parse_status_fields(process, "SigQ", isdigit);
 
     if (!signals_pending) return;
     process->psig->signals_pending = atoi(signals_pending);
@@ -283,8 +276,7 @@ void get_pending_signals_mask(profile_t *process)
     if (!process || !process->psig)
         return;
 
-   char *pending_signals = parse_status_fields(process->pid, "SigPnd", 
-                                               isalnum);
+   char *pending_signals = parse_status_fields(process, "SigPnd", isalnum);
 
     if (!pending_signals) return;
     process->psig->signal_pending_mask = strtol(pending_signals, NULL, 16);
@@ -297,8 +289,7 @@ void get_signals_blocked(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_blocked = parse_status_fields(process->pid, "SigBlk", 
-                                                isalnum);
+    char *signals_blocked = parse_status_fields(process, "SigBlk", isalnum);
 
     if (!signals_blocked) return;
     process->psig->signals_blocked = strtol(signals_blocked, NULL, 16);
@@ -311,8 +302,7 @@ void get_signals_ignored(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_ignored = parse_status_fields(process->pid, "SigIgn", 
-                                                isalnum);
+    char *signals_ignored = parse_status_fields(process, "SigIgn", isalnum);
 
     if (!signals_ignored) return;
     process->psig->signals_ignored = strtol(signals_ignored, NULL, 16);
@@ -325,8 +315,7 @@ void get_signals_caught(profile_t *process)
     if (!process || !process->psig)
         return;
 
-    char *signals_caught = parse_status_fields(process->pid, "SigCgt", 
-                                               isalnum);
+    char *signals_caught = parse_status_fields(process, "SigCgt", isalnum);
 
     if (!signals_caught) return;
     process->psig->signals_caught = strtol(signals_caught, NULL, 16);
@@ -360,6 +349,7 @@ void pid_name(profile_t *process)
     size_t n = 0;
 
     getline(&name, &n, proc);
+    // XXX add check on name
     fclose(proc);
 
     name[strlen(name) - 1] = '\0';
@@ -367,28 +357,17 @@ void pid_name(profile_t *process)
     process->name = name;
 }
 
-static void set_fdstat(char *path, fdstats_t *fdstats)
-{
-    int open_fd = open(path, O_RDONLY | O_NONBLOCK);
-
-    if (open_fd == -1) 
-        return;
-
-    fstat(open_fd, &(fdstats->file_stats));
-
-    close(open_fd);
-}
-
 static void set_realpath(char *path, fdstats_t *fdstats)
 {
-    char realpath[PATH_MAX + 1];
+    char realpath[PATH_MAX + 1] = { '\0' };
+    size_t len;
 
     fdstats->file = NULL;
 
-    if (readlink(path, realpath, PATH_MAX) < 0)
+    if ((len = readlink(path, realpath, PATH_MAX)) < 0)
         return;
 
-    realpath[PATH_MAX] = '\0';
+    realpath[len] = '\0';
 
     fdstats->file = strdup(realpath);
 }
@@ -397,36 +376,35 @@ int process_fd_stats(profile_t *process)
 {
     struct dirent *files;
 
-    // XXX path
-    char *fdpath;
-    CONSTRUCT_PATH(fdpath, "%s%d%s", 3, PROC, process->pid, FD);
+    size_t procfs_len = process->procfs_len;
+    char *base = (char *) &(process->procfs_base);
+    procfs_filename(base, FD, procfs_len);
+    procfs_len += strlen(FD);
 
-    DIR *fd_dir = opendir(fdpath);
+    DIR *fd_dir = opendir(base);
 
     if (!fd_dir) 
         return -1;
 
-    process->fd = malloc(sizeof *(process->fd));
+    if (!(process->fd = malloc(sizeof *(process->fd))))
+        return -1;
+
     fdstats_t *curr = process->fd;
     
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
-            // XXX path
-            char *path;
-            CONSTRUCT_PATH(path, "%s%s", 2, fdpath, files->d_name);
+            procfs_filename(base, files->d_name, procfs_len);
 
-            set_fdstat(path, curr);
-            set_realpath(path, curr);
+            if (stat(base, &(curr->file_stats)) < 0)
+                continue;
 
-            free(path);
+            set_realpath(base, curr);
 
             if (!curr->file) 
                 continue;
 
-            curr->next_fd = malloc(sizeof *curr->next_fd);
-
-            if (curr->next_fd == NULL)
+            if (!(curr->next_fd = malloc(sizeof *curr->next_fd)))
                 break;
 
             curr = curr->next_fd;
@@ -435,8 +413,6 @@ int process_fd_stats(profile_t *process)
 
     if (fd_dir)
         closedir(fd_dir);
-
-    free(fdpath);
 
     return 0;
 }
@@ -719,8 +695,8 @@ void voluntary_context_switches(profile_t *process)
         return;
     }
 
-    char *vswitch = parse_status_fields(process->pid, 
-                               "voluntary_ctxt_switches", isdigit);
+    char *vswitch = parse_status_fields(process, "voluntary_ctxt_switches", 
+                                        isdigit);
     if (vswitch) { 
         process->vol_ctxt_swt = atol(vswitch);
         free(vswitch);
@@ -743,8 +719,7 @@ void involuntary_context_switches(profile_t *process)
     }
 
     char *invol_switch = "nonvoluntary_ctxt_switches";
-    char *ivswitch = parse_status_fields(process->pid, invol_switch, 
-                                         isdigit);
+    char *ivswitch = parse_status_fields(process, invol_switch, isdigit);
     if (ivswitch) {
         process->invol_ctxt_swt = atol(ivswitch);
         free(ivswitch);
@@ -784,8 +759,7 @@ void virtual_mem(profile_t *process)
 
     // local static?
     char *virtual_memory = "VmSize";
-    char *total_memory = parse_status_fields(process->pid, virtual_memory, 
-                                             isdigit);
+    char *total_memory = parse_status_fields(process, virtual_memory, isdigit);
     if (total_memory) {
         process->vmem = atol(total_memory);
         free(total_memory);
@@ -820,6 +794,7 @@ profile_t *init_profile(int pid)
     } else 
         profile->nl_conn = -1;
     profile->uid = user;
+    profile->fd = NULL;
 
     return profile; 
 
@@ -832,8 +807,8 @@ profile_error:
 
 void free_profile_fd(profile_t *process)
 {
-    fdstats_t *curr;
-    fdstats_t *next;
+    fdstats_t *curr = NULL;
+    fdstats_t *next = NULL;
     
     for (curr=process->fd; curr; curr=next) {
         next = curr->next_fd;
