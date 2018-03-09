@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
@@ -42,6 +43,7 @@ static inline void procfs_filename(char *base, char *field, size_t len)
 
 static char *parse_status_fields(profile_t *p, char *field, int (*accept_char)(int c))
 {
+    p->procfs_base[p->procfs_len] = '\0';
     procfs_filename(p->procfs_base, STATUS, p->procfs_len);
 
     FILE *fp = fopen(p->procfs_base, "r");
@@ -223,7 +225,6 @@ static void *make_nl_req(int req, profile_t *process)
     if (recv_nl_req(process->nl_conn, msg) < 0)
         goto release;
 
-
     // rm copy dup
     if (req == TASKSTATS_CMD_GET) {
         void *parse_results = parse_taskmsg(TASKSTATS_TYPE_STATS, msg);
@@ -243,6 +244,21 @@ release:
     free(msg);
 
     return task_ret;
+}
+
+#define TASK_REQ(profile, field, p_off, size)                             \
+    get_task_field(profile, offsetof(struct taskstats, field), p_off, size)
+
+static void get_task_field(profile_t *process, int st_off, 
+                                   int p_off, size_t size)
+{
+    struct taskstats *st = (struct taskstats *) make_nl_req(TASKSTATS_CMD_GET, 
+                                                                     process);
+    
+    if (st == NULL)
+        return;
+
+    *(((char *) process) + p_off) = *(((char *) st) + st_off);
 }
 
 static int get_nl_family_id(profile_t *process)
@@ -324,22 +340,6 @@ void get_signals_caught(profile_t *process)
 
 void pid_name(profile_t *process)
 {
-    // separate logic into function for taskstats...
-    if (process->uid == 0) {
-
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->name = strdup(st->ac_comm);
-            free(st);
-        } else
-            process->name = NULL;
-
-        return;
-    }
-
-    char *name = NULL;
-
     procfs_filename(process->procfs_base, COMM, (int) process->procfs_len);
     FILE *proc = fopen(process->procfs_base, "r");
 
@@ -347,14 +347,13 @@ void pid_name(profile_t *process)
         return;
 
     size_t n = 0;
+    char *name = NULL;
 
-    getline(&name, &n, proc);
-    // XXX add check on name
+    ssize_t r = getline(&name, &n, proc);
     fclose(proc);
 
-    name[strlen(name) - 1] = '\0';
-
-    process->name = name;
+    memcpy(process->name, name, r);
+    process->name[r - 1] = '\0';
 }
 
 static void set_realpath(char *path, fdstats_t *fdstats)
@@ -420,14 +419,7 @@ int process_fd_stats(profile_t *process)
 void get_process_nice(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->nice = st->ac_nice;
-            free(st);
-        } else
-            process->nice_err = -1;
-
+        TASK_REQ(process, ac_nice, offsetof(profile_t, nice), sizeof(int));
         return;
     }
 
@@ -684,14 +676,8 @@ void getusernam(profile_t *process)
 void voluntary_context_switches(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                      TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->vol_ctxt_swt = st->nvcsw;
-            free(st);
-        } else
-            process->vol_ctxt_swt = -1;
-
+        TASK_REQ(process, nvcsw, offsetof(profile_t, vol_ctxt_swt), 
+                                                 sizeof(uint64_t));
         return;
     }
 
@@ -707,14 +693,8 @@ void voluntary_context_switches(profile_t *process)
 void involuntary_context_switches(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                      TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->invol_ctxt_swt = st->nivcsw;
-            free(st);
-        } else
-            process->invol_ctxt_swt = -1;
-
+        TASK_REQ(process, nivcsw, offsetof(profile_t, invol_ctxt_swt),
+                                                    sizeof(uint64_t));
         return;
     }
 
@@ -729,13 +709,9 @@ void involuntary_context_switches(profile_t *process)
 void get_start_time(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                      TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->start_time = st->ac_btime;
-            free(st);
-        } else
-            process->start_time = -1;
+        TASK_REQ(process, ac_btime, offsetof(profile_t, start_time),
+                                                  sizeof(uint32_t));
+        return;
     }
 
     // Magic number?
@@ -746,14 +722,7 @@ void get_start_time(profile_t *process)
 void virtual_mem(profile_t *process)
 {
     if (process->uid == 0) {
-        struct taskstats *st = (struct taskstats *) make_nl_req(
-                                      TASKSTATS_CMD_GET, process);
-        if (st) {
-            process->vmem = st->virtmem;
-            free(st);
-        } else
-            process->vmem = -1;
-
+        TASK_REQ(process, virtmem, offsetof(profile_t, vmem), sizeof(uint64_t));
         return;
     }
 
@@ -769,6 +738,7 @@ void virtual_mem(profile_t *process)
 profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
+    memset(profile->procfs_base, '\0', PROCFS_MAX);
     if (!profile)
         return NULL;
 
@@ -779,10 +749,6 @@ profile_t *init_profile(int pid)
         return NULL;
     } 
         
-    
-    profile->prlim = malloc(sizeof *profile->prlim);
-    profile->psig = malloc(sizeof *profile->psig);
-
     if (!is_alive(profile))
         goto profile_error;
  
@@ -793,8 +759,11 @@ profile_t *init_profile(int pid)
         profile->nl_family_id = get_nl_family_id(profile);
     } else 
         profile->nl_conn = -1;
+
     profile->uid = user;
     profile->fd = NULL;
+    profile->prlim = calloc(1, sizeof(profile->prlim));
+    profile->psig = calloc(1, sizeof(profile->psig));
 
     return profile; 
 
@@ -824,9 +793,6 @@ void free_profile(profile_t *process)
 
     if (process->nl_conn != -1)
         close(process->nl_conn);
-
-    if (process->name)
-        free(process->name);
 
     if (process->prlim)
         free(process->prlim);
