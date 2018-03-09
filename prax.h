@@ -61,7 +61,7 @@ struct profile {
     uint64_t vmem;
     char procfs_base[PROCFS_MAX + 1];
     size_t procfs_len;
-    char *name;
+    char name[32];
     char *username;
     char ioprio[16];
     struct proc_rlim *prlim;
@@ -152,7 +152,7 @@ void set_pid_nice(profile_t *process, int priority);
 #define PROC "/proc/"
 #define PROCLEN 6
 #define YAMA "/proc/sys/kernel/yama/ptrace_scope"
-#define STATUS "/status"
+#define STATUS "status"
 #define COMM "comm"
 #define TASK "/task"
 #define FD "fd/"
