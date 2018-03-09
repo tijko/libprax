@@ -346,14 +346,10 @@ void pid_name(profile_t *process)
     if (proc == NULL) 
         return;
 
-    size_t n = 0;
-    char *name = NULL;
+    fscanf(proc, "%32c", process->name);
 
-    ssize_t r = getline(&name, &n, proc);
     fclose(proc);
-
-    memcpy(process->name, name, r);
-    process->name[r - 1] = '\0';
+    process->name[strlen(process->name) - 1] = '\0';
 }
 
 static void set_realpath(char *path, fdstats_t *fdstats)
