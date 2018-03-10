@@ -114,7 +114,7 @@ void get_trace_pid(profile_t *process)
         process->trace_pid = 0;
 }
 
-void *parse_taskmsg(int req, struct taskmsg *msg)
+static void *parse_taskmsg(int req, struct taskmsg *msg)
 {
     int msglength = msg->nl.nlmsg_len;
 
@@ -338,18 +338,22 @@ void get_signals_caught(profile_t *process)
     free(signals_caught);
 }
 
-void pid_name(profile_t *process)
+int pid_name(profile_t *process)
 {
-    procfs_filename(process->procfs_base, COMM, (int) process->procfs_len);
+    procfs_filename(process->procfs_base, COMM, process->procfs_len);
+
     FILE *proc = fopen(process->procfs_base, "r");
 
     if (proc == NULL) 
-        return;
+        return -1;
 
-    fscanf(proc, "%32c", process->name);
+    if (fscanf(proc, "%32c", process->name) < 1)
+        return -1;
 
     fclose(proc);
     process->name[strlen(process->name) - 1] = '\0';
+
+    return 0;
 }
 
 static void set_realpath(char *path, fdstats_t *fdstats)
@@ -380,6 +384,9 @@ int process_fd_stats(profile_t *process)
 
     if (!fd_dir) 
         return -1;
+
+    if (process->fd != NULL)
+        free_profile_fd(process);
 
     if (!(process->fd = malloc(sizeof *(process->fd))))
         return -1;
@@ -509,30 +516,34 @@ void process_sid(profile_t *process)
     process->sid = sid;
 }
 
-// Having an api call returning void with no error signalling??
-void rlim_stat(profile_t *process, int resource, unsigned long *lim)
+int set_soft_rlimit(profile_t *process, int resource, unsigned long limit)
 {
-    // return error value
-    if (!process)
-        return;
+    struct rlimit limits = { .rlim_cur=limit };
+    
+    if (prlimit(process->pid, resource, &limits, NULL) < 0)
+        return -1;
 
-    // return error value
-    if (!process->prlim) {
-        process->prlim = malloc(sizeof *process->prlim);
-        if (!process->prlim)
-            return;
-    }
+    return 0;
+}
 
-    struct proc_rlim *prlim = process->prlim;
+int set_hard_rlimit(profile_t *process, int resource, unsigned long limit)
+{
+    struct rlimit limits = { .rlim_max=limit };
+    
+    if (prlimit(process->pid, resource, &limits, NULL) < 0)
+        return -1;
 
+    return 0;
+}
+
+int get_rlimit(profile_t *process, int resource)
+{
+    // MASK-OFF and get resources
+    // separate set-from-get (giant switch)
+    
     struct rlimit limits;
     prlimit(process->pid, resource, NULL, &limits);
-
-    if (lim) {
-        limits.rlim_cur = *lim;
-        prlimit(process->pid, resource, &limits, NULL);
-    }
-
+    /*
     switch (resource) {
         case(RLIMIT_AS): 
             prlim->addr_space_cur = limits.rlim_cur;
@@ -595,6 +606,8 @@ void rlim_stat(profile_t *process, int resource, unsigned long *lim)
             prlim->stack_max = limits.rlim_max;
             break;
     }        
+    */
+    return 0;
 }
 
 void running_threads(profile_t *process)
@@ -734,32 +747,33 @@ void virtual_mem(profile_t *process)
 profile_t *init_profile(int pid)
 {
     profile_t *profile = calloc(sizeof *profile, 1);
-    memset(profile->procfs_base, '\0', PROCFS_MAX);
     if (!profile)
         return NULL;
+
+    if (!is_alive(profile))
+        goto profile_error;
+ 
+    memset(profile->procfs_base, '\0', PROCFS_MAX);
 
     profile->pid = pid;
     if ((profile->procfs_len = snprintf(profile->procfs_base, PROCFS_MAX,
                                                  "/proc/%d/", pid)) < 0) {
-        free(profile);
-        return NULL;
+        goto profile_error;
     } 
         
-    if (!is_alive(profile))
-        goto profile_error;
- 
     uid_t user = geteuid();
+    if (user < 0)
+        return NULL;
+
+    profile->uid = user;
+    profile->nl_conn = -1;
 
     if (user == 0) {
         profile->nl_conn = create_nl_conn();
         profile->nl_family_id = get_nl_family_id(profile);
-    } else 
-        profile->nl_conn = -1;
+    } 
 
-    profile->uid = user;
     profile->fd = NULL;
-    profile->prlim = calloc(1, sizeof(profile->prlim));
-    profile->psig = calloc(1, sizeof(profile->psig));
 
     return profile; 
 
@@ -787,14 +801,8 @@ void free_profile(profile_t *process)
     if (!process)
         return;
 
-    if (process->nl_conn != -1)
+    if (process->nl_conn > -1)
         close(process->nl_conn);
-
-    if (process->prlim)
-        free(process->prlim);
-
-    if (process->psig)
-        free(process->psig);
 
     if (process->fd)
         free_profile_fd(process);
