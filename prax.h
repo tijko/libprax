@@ -121,6 +121,63 @@ void free_profile_fd(profile_t *process);
  * rlimits
  */
 
+#define LIMIT_CPU        0x1
+#define LIMIT_FSIZE      0x2
+#define LIMIT_DATA       0X4
+#define LIMIT_STACK      0X8
+#define LIMIT_CORE       0x10
+#define LIMIT_RSS        0x20
+#define LIMIT_NOFILE     0x40
+#define LIMIT_AS         0x80
+#define LIMIT_NPROC      0x100
+#define LIMIT_MEMLOCK    0x200
+#define LIMIT_LOCKS      0x400
+#define LIMIT_SIGPENDING 0x800
+#define LIMIT_MSGQUEUE   0x1000
+#define LIMIT_NICE       0x2000
+#define LIMIT_RTPRIO     0x4000
+#define LIMIT_RTTIME     0x8000
+
+const int prlimits[] = {
+    LIMIT_CPU,
+    LIMIT_FSIZE,
+    LIMIT_DATA,
+    LIMIT_STACK,
+    LIMIT_CORE,
+    LIMIT_RSS,
+    LIMIT_NOFILE,
+    LIMIT_AS,
+    LIMIT_NPROC,
+    LIMIT_MEMLOCK,
+    LIMIT_LOCKS,
+    LIMIT_SIGPENDING,
+    LIMIT_MSGQUEUE,
+    LIMIT_NICE,
+    LIMIT_RTPRIO,
+    LIMIT_RTTIME
+};
+
+int prlimit_values[] = {
+    RLIMIT_CPU,
+    RLIMIT_FSIZE,
+    RLIMIT_DATA,
+    RLIMIT_STACK,
+    RLIMIT_CORE,
+    RLIMIT_RSS,
+    RLIMIT_NOFILE,
+    RLIMIT_AS,
+    RLIMIT_NPROC,
+    RLIMIT_MEMLOCK,
+    RLIMIT_LOCKS,
+    RLIMIT_SIGPENDING,
+    RLIMIT_MSGQUEUE,
+    RLIMIT_NICE,
+    RLIMIT_RTPRIO,
+    RLIMIT_RTTIME
+};
+
+#define NLIMITS 16
+
 struct proc_rlim {
     rlim_t addr_space_cur;
     rlim_t addr_space_max;
@@ -163,7 +220,7 @@ __attribute__(( visibility("default") ))
 int set_hard_rlimit(profile_t *process, int resource, unsigned long limit);
 
 __attribute__(( visibility("default") ))
-int get_rlimits(profile_t *process, int resource);
+int get_rlimits(profile_t *process, int resource_mask);
 
 /*
  * Process signal structure and functions
