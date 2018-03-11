@@ -536,77 +536,85 @@ int set_hard_rlimit(profile_t *process, int resource, unsigned long limit)
     return 0;
 }
 
-int get_rlimit(profile_t *process, int resource)
+int get_rlimits(profile_t *process, int resource_mask)
 {
-    // MASK-OFF and get resources
-    // separate set-from-get (giant switch)
-    
     struct rlimit limits;
-    prlimit(process->pid, resource, NULL, &limits);
-    /*
-    switch (resource) {
-        case(RLIMIT_AS): 
-            prlim->addr_space_cur = limits.rlim_cur;
-            prlim->addr_space_max = limits.rlim_max;
-            break;
-        case(RLIMIT_CORE):
-            prlim->core_cur = limits.rlim_cur;
-            prlim->core_max = limits.rlim_max;
-            break;
-        case(RLIMIT_CPU):
-            prlim->cpu_cur = limits.rlim_cur;
-            prlim->cpu_max = limits.rlim_max;
-            break;
-        case(RLIMIT_DATA):
-            prlim->data_cur = limits.rlim_cur;
-            prlim->data_max = limits.rlim_max;
-            break;
-        case(RLIMIT_FSIZE):
-            prlim->fsize_cur = limits.rlim_cur;
-            prlim->fsize_max = limits.rlim_max;
-            break;
-        case(RLIMIT_LOCKS):
-            prlim->locks_cur = limits.rlim_cur;
-            prlim->locks_max = limits.rlim_max;
-            break;
-        case(RLIMIT_MEMLOCK):
-            prlim->memlock_cur = limits.rlim_cur;
-            prlim->memlock_max = limits.rlim_max;
-            break;
-        case(RLIMIT_MSGQUEUE):
-            prlim->msgqueue_cur = limits.rlim_cur;
-            prlim->msgqueue_max = limits.rlim_max;
-            break;
-        case(RLIMIT_NICE):
-            prlim->nice_cur = limits.rlim_cur;
-            prlim->nice_max = limits.rlim_max;
-            break;
-        case(RLIMIT_NOFILE):
-            prlim->nofile_cur = limits.rlim_cur;
-            prlim->nofile_max = limits.rlim_max;
-            break;
-        case(RLIMIT_NPROC):
-            prlim->nproc_cur = limits.rlim_cur;
-            prlim->nproc_max = limits.rlim_max;
-            break;
-        case(RLIMIT_RSS):
-            prlim->rss_cur = limits.rlim_cur;
-            prlim->rss_max = limits.rlim_max;
-            break;
-        case(RLIMIT_RTPRIO):
-            prlim->rtprio_cur = limits.rlim_cur;
-            prlim->rtprio_max = limits.rlim_max;
-            break;
-        case(RLIMIT_SIGPENDING):
-            prlim->sigpending_cur = limits.rlim_cur;
-            prlim->sigpending_max = limits.rlim_max;
-            break;
-        case(RLIMIT_STACK):
-            prlim->stack_cur = limits.rlim_cur;
-            prlim->stack_max = limits.rlim_max;
-            break;
-    }        
-    */
+    pid_t pid = process->pid;
+    struct proc_rlim *prlim = &(process->prlim);
+
+    for (int i=0; i < NLIMITS; i++) {
+        if (resource_mask & prlimits[i]) {
+            
+            int resource = prlimit_values[i];
+
+            if (prlimit(pid, resource, NULL, &limits) < 0)
+                return -1;
+
+            switch (resource) {
+                case(RLIMIT_AS): 
+                    prlim->addr_space_cur = limits.rlim_cur;
+                    prlim->addr_space_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_CORE):
+                    prlim->core_cur = limits.rlim_cur;
+                    prlim->core_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_CPU):
+                    prlim->cpu_cur = limits.rlim_cur;
+                    prlim->cpu_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_DATA):
+                    prlim->data_cur = limits.rlim_cur;
+                    prlim->data_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_FSIZE):
+                    prlim->fsize_cur = limits.rlim_cur;
+                    prlim->fsize_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_LOCKS):
+                    prlim->locks_cur = limits.rlim_cur;
+                    prlim->locks_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_MEMLOCK):
+                    prlim->memlock_cur = limits.rlim_cur;
+                    prlim->memlock_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_MSGQUEUE):
+                    prlim->msgqueue_cur = limits.rlim_cur;
+                    prlim->msgqueue_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_NICE):
+                    prlim->nice_cur = limits.rlim_cur;
+                    prlim->nice_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_NOFILE):
+                    prlim->nofile_cur = limits.rlim_cur;
+                    prlim->nofile_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_NPROC):
+                    prlim->nproc_cur = limits.rlim_cur;
+                    prlim->nproc_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_RSS):
+                    prlim->rss_cur = limits.rlim_cur;
+                    prlim->rss_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_RTPRIO):
+                    prlim->rtprio_cur = limits.rlim_cur;
+                    prlim->rtprio_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_SIGPENDING):
+                    prlim->sigpending_cur = limits.rlim_cur;
+                    prlim->sigpending_max = limits.rlim_max;
+                    break;
+                case(RLIMIT_STACK):
+                    prlim->stack_cur = limits.rlim_cur;
+                    prlim->stack_max = limits.rlim_max;
+                    break;
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -750,17 +758,15 @@ profile_t *init_profile(int pid)
     if (!profile)
         return NULL;
 
-    if (!is_alive(profile))
-        goto profile_error;
- 
-    memset(profile->procfs_base, '\0', PROCFS_MAX);
-
     profile->pid = pid;
     if ((profile->procfs_len = snprintf(profile->procfs_base, PROCFS_MAX,
                                                  "/proc/%d/", pid)) < 0) {
         goto profile_error;
     } 
         
+    if (!is_alive(profile))
+        goto profile_error;
+ 
     uid_t user = geteuid();
     if (user < 0)
         return NULL;
