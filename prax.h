@@ -24,9 +24,12 @@ typedef struct profile profile_t;
 #endif
 
 /*
- * IOPriority macros, these definitions are from linux/ioprio.h
- *
  *  XXX NOTE: there are no GLibc wrappers for ioprio_get & ioprio_set
+ *
+ * IOPriority macros, these definitions are from the kernels source 
+ * linux/ioprio.h
+ *
+ * CFQ scheduler needs to be in use by the device for these to have effect.
  */
 
 #define IOPRIO_WHO_PROCESS 1
@@ -46,6 +49,7 @@ enum {
 #define IOPRIO_VALUE(class, data) (((class) << IOPRIO_SHIFT) | data)
 
 #define IOPRIO_LEN(class) strlen(class) + IOPRIO_SIZE
+
 #define IOPRIO_SIZE 6 
 
 const char *class[4] = {"", "rt/", "be/", "idle"};

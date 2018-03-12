@@ -388,11 +388,12 @@ int process_fd_stats(profile_t *process)
     if (process->fd != NULL)
         free_profile_fd(process);
 
-    if (!(process->fd = malloc(sizeof *(process->fd))))
+    if (!(process->fd = calloc(1, sizeof(fdstats_t))))
         return -1;
 
+    process->fd->next_fd = NULL;
     fdstats_t *curr = process->fd;
-    
+     
     while ((files = readdir(fd_dir))) {
         if (files->d_type == DT_LNK) {
  
@@ -406,9 +407,10 @@ int process_fd_stats(profile_t *process)
             if (!curr->file) 
                 continue;
 
-            if (!(curr->next_fd = malloc(sizeof *curr->next_fd)))
+            if (!(curr->next_fd = calloc(1, sizeof(fdstats_t))))
                 break;
 
+            curr->next_fd->next_fd = NULL;
             curr = curr->next_fd;
         }
     }
@@ -792,8 +794,7 @@ profile_error:
 
 void free_profile_fd(profile_t *process)
 {
-    fdstats_t *curr = NULL;
-    fdstats_t *next = NULL;
+    fdstats_t *curr = NULL, *next = NULL;
     
     for (curr=process->fd; curr; curr=next) {
         next = curr->next_fd;
