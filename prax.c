@@ -421,21 +421,22 @@ int process_fd_stats(profile_t *process)
     return 0;
 }
 
-void get_process_nice(profile_t *process)
+int get_process_nice(profile_t *process)
 {
     if (process->uid == 0) {
         TASK_REQ(process, ac_nice, offsetof(profile_t, nice), sizeof(int));
-        return;
+        return 0;
     }
 
     errno = 0;
 
     int nice = getpriority(PRIO_PROCESS, process->pid);
 
-    if (errno != 0)
-        process->nice_err = errno;
-    else
-        process->nice = nice;
+    if (errno != 0) 
+        return -1;
+
+    process->nice = nice;
+    return 0;
 }
 
 void set_pid_nice(profile_t *process, int priority)
@@ -446,44 +447,56 @@ void set_pid_nice(profile_t *process, int priority)
         process->nice = priority;
 }
 
-static void get_ioprio_nice(profile_t *process, int ioprio)
+static int get_ioprio_nice(profile_t *process, int ioprio)
 {
-    get_process_nice(process);
+    if (get_process_nice(process) < 0)
+        return -1;
+
     int ioprio_level = (process->nice + 20) / 5;
     int prio = sched_getscheduler(process->pid);
 
-    if (prio == SCHED_FIFO || prio == SCHED_RR) {        
-        snprintf(process->ioprio, IOPRIO_LEN(class[1]), 
-                 "%s%d", class[1], ioprio_level);
-    } else if (prio == SCHED_OTHER) {
-        snprintf(process->ioprio, IOPRIO_LEN(class[2]), 
-                 "%s%d", class[2], ioprio_level);
-    } else {
-        snprintf(process->ioprio, IOPRIO_LEN(class[3]), "%s", class[3]);
-    }
+    if (prio < 0)
+        return -1;
+
+    const char *class_str = NULL;
+    char level_str[8] = { '\0' };
+
+    if (!(prio >> 2)) {
+            class_str = nice_class[prio];
+            snprintf(level_str, 7, "%d", ioprio_level);
+    } else 
+            class_str = nice_class[3];
+
+    snprintf(process->ioprio, IOPRIO_LEN(class_str), "%s%s", 
+                                      class_str, level_str);
+
+    return 0;
 }
 
-void get_ioprio(profile_t *process)
+int get_ioprio(profile_t *process)
 {
     int ioprio = syscall(GETIOPRIO, IOPRIO_WHO_PROCESS, process->pid);
 
-    if (ioprio == -1)
-        return;
+    if (ioprio < 0)
+        return -1;
 
-    if (IOPRIO_CLASS(ioprio) != 0) {
-        snprintf(process->ioprio, IOPRIO_LEN(class[IOPRIO_CLASS(ioprio)]), 
-                 "%s%ld", class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
-    } else
-        get_ioprio_nice(process, ioprio);
+    if (IOPRIO_CLASS(ioprio) < 1)
+        return get_ioprio_nice(process, ioprio);
+
+    snprintf(process->ioprio, IOPRIO_LEN(prio_class[IOPRIO_CLASS(ioprio)]),
+             "%s%ld", prio_class[IOPRIO_CLASS(ioprio)], IOPRIO_DATA(ioprio));
+    return 0;
 }
 
-void set_ioprio(profile_t *process, int class, int value)
+int set_ioprio(profile_t *process, int class, int value)
 {
     int ioprio = IOPRIO_VALUE(class, value);
     int setioprio = syscall(SETIOPRIO, IOPRIO_WHO_PROCESS, 
                                      process->pid, ioprio);
     if (setioprio != -1)
-        get_ioprio(process);
+        return get_ioprio(process);
+
+    return 0;
 }
 
 void cpu_affinity(profile_t *process)
