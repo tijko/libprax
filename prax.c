@@ -461,7 +461,7 @@ static int get_ioprio_nice(profile_t *process, int ioprio)
     const char *class_str = NULL;
     char level_str[8] = { '\0' };
 
-    if (!(2 >> prio)) {
+    if (!(prio >> 2)) {
             class_str = nice_class[prio];
             snprintf(level_str, 7, "%d", ioprio_level);
     } else 
