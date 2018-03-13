@@ -52,15 +52,16 @@ enum {
 
 #define IOPRIO_SIZE 6 
 
-const char *class[4] = {"", "rt/", "be/", "idle"};
+const char *nice_class[4] = {"be/", "rt/", "rt/", "idle"};
+const char *prio_class[4] = {"", "rt/", "be/", "idle"};
 
 // Returns the I/O scheduling class and priority of profiled pid.
 __attribute__(( visibility("default") ))
-void get_ioprio(profile_t *process);
+int get_ioprio(profile_t *process);
 
 // Sets the I/O scheduling class and priority of profiled pid.
 __attribute__(( visibility("default") ))
-void set_ioprio(profile_t *process, int class, int value);
+int set_ioprio(profile_t *process, int class, int value);
 
 /*
  * Generic-Netlink macros, for convenience to parsing out:
@@ -318,7 +319,7 @@ int pid_digit_places(int pid);
 
 // Function returns the niceness of the pid being profiled.
 __attribute__(( visibility("default") ))
-void get_process_nice(profile_t *process);
+int get_process_nice(profile_t *process);
 
 // Sets the niceness of pid.
 __attribute__(( visibility("default") ))
