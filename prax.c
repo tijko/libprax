@@ -274,68 +274,44 @@ static int get_nl_family_id(profile_t *process)
     return -1;
 }
 
-void get_pending_signals(profile_t *process)
+int get_signals(profile_t *process)
 {
-    // return error no
-    if (!process || !process->psig)
-        return;
-    char *signals_pending = parse_status_fields(process, "SigQ", isdigit);
+    if (!process)
+        return -1;
 
-    if (!signals_pending) return;
-    process->psig->signals_pending = atoi(signals_pending);
-    free(signals_pending);
-}
+    procfs_filename(process->procfs_base, STATUS, process->procfs_len);
 
-void get_pending_signals_mask(profile_t *process)
-{
-    // return error no
-    if (!process || !process->psig)
-        return;
+    char buf[STATUS_SIZE] = { '\0' };
 
-   char *pending_signals = parse_status_fields(process, "SigPnd", isalnum);
+    FILE *fp = fopen(process->procfs_base, "r");
+    if (!fp)
+        return -1;
 
-    if (!pending_signals) return;
-    process->psig->signal_pending_mask = strtol(pending_signals, NULL, 16);
-    free(pending_signals);
-}
+    if (fread(buf, STATUS_SIZE - 1, 1, fp) < 0)
+        goto error;
 
-void get_signals_blocked(profile_t *process)
-{
-    // return error no
-    if (!process || !process->psig)
-        return;
+    char *d1 = "Q";
+    char *d2 = "\t";
 
-    char *signals_blocked = parse_status_fields(process, "SigBlk", isalnum);
+    char *signals = strtok(buf, d1);
+    if (!signals) 
+        goto error;
 
-    if (!signals_blocked) return;
-    process->psig->signals_blocked = strtol(signals_blocked, NULL, 16);
-    free(signals_blocked);
-}
+    signals = strtok(NULL, d2);
+    char signal_bytes[32] = { '\0' };
+    long *psig = (long *) &(process->psig);
+    for (int i=0; i < 6; i++, psig++) {
+        signals = strtok(NULL, d2);
+        for (int j=1; isalnum(signals[j]); j++)
+            signal_bytes[j - 1] = signals[j];
+       *psig = strtol(signal_bytes, NULL, 16); 
+    }
 
-void get_signals_ignored(profile_t *process)
-{
-    // return error no
-    if (!process || !process->psig)
-        return;
+    return 0;
 
-    char *signals_ignored = parse_status_fields(process, "SigIgn", isalnum);
-
-    if (!signals_ignored) return;
-    process->psig->signals_ignored = strtol(signals_ignored, NULL, 16);
-    free(signals_ignored);
-}
-
-void get_signals_caught(profile_t *process)
-{
-    // return error no
-    if (!process || !process->psig)
-        return;
-
-    char *signals_caught = parse_status_fields(process, "SigCgt", isalnum);
-
-    if (!signals_caught) return;
-    process->psig->signals_caught = strtol(signals_caught, NULL, 16);
-    free(signals_caught);
+error:
+    fclose(fp);
+    return -1;
 }
 
 int pid_name(profile_t *process)

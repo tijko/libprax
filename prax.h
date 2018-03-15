@@ -87,7 +87,7 @@ struct taskmsg {
  * Procfs macros for path resolution and buffer sizing.
  */
 
-#define STATUS_SIZE 1024 // XXX Fix-me, set as format string
+#define STATUS_SIZE 1024
 #define MAX_FIELD 32
 
 #define PROC "/proc/"
@@ -232,32 +232,17 @@ int get_rlimits(profile_t *process, int resource_mask);
  */
 
 struct proc_signal {
-    long signal_pending_mask;
+    long signals_pending;
+    long signal_thr_mask;
+    long signal_ps_mask;
     long signals_blocked;
     long signals_ignored;
     long signals_caught;
-    int signals_pending;
 };
 
 // Gets the number of pending signals for the process
 __attribute__(( visibility("default") ))
-void get_pending_signals(profile_t *process);
-
-// Gets the mask of the currently queued signals for the process
-__attribute__(( visibility("default") ))
-void get_pending_signals_mask(profile_t *process);
-
-// Gets the blocked signals for the process
-__attribute__(( visibility("default") ))
-void get_signals_blocked(profile_t *process);
-
-// Gets the signals ignored for the process
-__attribute__(( visibility("default") ))
-void get_signals_ignored(profile_t *process);
-
-// Gets the signals caught for the process
-__attribute__(( visibility("default") ))
-void get_signals_caught(profile_t *process);
+int get_signals(profile_t *process);
 
 /*
  * The main data structure that contains all other subsequent data from the 
@@ -278,7 +263,7 @@ struct profile {
     char *username;
     char ioprio[16];
     struct proc_rlim prlim;
-    struct proc_signal *psig;
+    struct proc_signal psig;
     fdstats_t *fd;
     pid_t trace_pid;
     pid_t pid;
