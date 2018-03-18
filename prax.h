@@ -95,7 +95,7 @@ struct taskmsg {
 #define YAMA "/proc/sys/kernel/yama/ptrace_scope"
 #define STATUS "status"
 #define COMM "comm"
-#define TASK "/task"
+#define TASK "task"
 #define FD "fd/"
 
 
@@ -327,7 +327,7 @@ void process_sid(profile_t *process);
 
 // populates the 'threads' array in process struct if any threads are running.
 __attribute__(( visibility("default") ))
-void running_threads(profile_t *process);
+int running_threads(profile_t *process);
 
 // kills a thread under the current processes group with the provided id.
 __attribute__(( visibility("default") ))
