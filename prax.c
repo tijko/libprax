@@ -7,7 +7,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
-//#include <stdarg.h>
 #include <limits.h>
 #include <dirent.h>
 #include <string.h>
