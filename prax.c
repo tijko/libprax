@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdarg.h>
+//#include <stdarg.h>
 #include <limits.h>
 #include <dirent.h>
 #include <string.h>
@@ -17,18 +17,13 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 
-#define CONSTRUCT_PATH(path, fmt, parts, ...) asprintf(&path, fmt, __VA_ARGS__)
 
 bool is_alive(profile_t *process)
 {
-    DIR *proc_dir_handle = opendir(process->procfs_base);
+    if (!opendir(process->procfs_base))
+        return false;
 
-    if (proc_dir_handle) {
-        closedir(proc_dir_handle);
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 static inline void procfs_filename(char *base, char *field, size_t len)
@@ -609,31 +604,25 @@ int get_rlimits(profile_t *process, int resource_mask)
     return 0;
 }
 
-void running_threads(profile_t *process)
+int running_threads(profile_t *process)
 {
     struct dirent *task;
     
-    // XXX path
-    char *path;
-    CONSTRUCT_PATH(path, "%s%d%s", 3, PROC, process->pid, TASK);
+    procfs_filename(process->procfs_base, TASK, process->procfs_len);
 
-    DIR *task_dir = opendir(path);
+    DIR *task_dir = opendir(process->procfs_base);
     if (task_dir == NULL)
-        goto count;
-   
-    // This isn't caught by the compiler??
+        return -1;
+
     int thread_cnt = 0;
     while ((task = readdir(task_dir))) {
-        if (!(ispunct(*(task->d_name)))) 
+        if (isdigit(task->d_name[0])) 
             process->threads[thread_cnt++] = atoi(task->d_name);
     }
 
     closedir(task_dir);
-    
-    count:
-        process->thread_count = thread_cnt;
-
-    free(path);
+    process->thread_count = thread_cnt;
+    return 0;
 }
 
 void tkill(profile_t *process, int tid)
