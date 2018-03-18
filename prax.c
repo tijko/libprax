@@ -746,14 +746,12 @@ profile_t *init_profile(int pid)
     if (!is_alive(profile))
         goto profile_error;
  
-    uid_t user = geteuid();
-    if (user < 0)
-        return NULL;
+    if ((profile->uid = geteuid()) < 0)
+        goto profile_error;
 
-    profile->uid = user;
     profile->nl_conn = -1;
 
-    if (user == 0) {
+    if (profile->uid == 0) {
         profile->nl_conn = create_nl_conn();
         profile->nl_family_id = get_nl_family_id(profile);
     } 
